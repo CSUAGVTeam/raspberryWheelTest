@@ -89,6 +89,19 @@
      <string>Set Speed -</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>50</y>
+      <width>111</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
@@ -115,12 +128,12 @@
      <string>Enable the Bridge</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="timeEdit">
+   <widget class="QLineEdit" name="lineEdit">
     <property name="geometry">
      <rect>
       <x>450</x>
-      <y>40</y>
-      <width>71</width>
+      <y>50</y>
+      <width>281</width>
       <height>25</height>
      </rect>
     </property>
@@ -195,58 +208,6 @@
     </property>
     <property name="text">
      <string>change addr</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label100">
-    <property name="geometry">
-     <rect>
-      <x>530</x>
-      <y>40</y>
-      <width>67</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>ms</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="addTimeButton">
-    <property name="geometry">
-     <rect>
-      <x>560</x>
-      <y>30</y>
-      <width>89</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Add Time</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="decTimeButton">
-    <property name="geometry">
-     <rect>
-      <x>560</x>
-      <y>80</y>
-      <width>89</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Dec Time</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="rotateTogetherButton">
-    <property name="geometry">
-     <rect>
-      <x>430</x>
-      <y>420</y>
-      <width>121</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Rotate Together</string>
     </property>
    </widget>
   </widget>

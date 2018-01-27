@@ -42,14 +42,6 @@ private slots:
 
     void on_changeAddButton_clicked();
 
-    void on_disableBridge_clicked();
-
-    void on_addTimeButton_clicked();
-
-    void on_decTimeButton_clicked();
-
-    void on_rotateTogetherButton_clicked();
-
 private:
     Ui::MainWindow *ui;
 };

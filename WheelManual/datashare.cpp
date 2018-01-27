@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdio>
-#include <QTime>
-#include <QCoreApplication>
 
 
 Datashare::Datashare()
@@ -29,7 +27,6 @@ Datashare::Datashare()
     wheelAddress = 0;
     wheelMoveSpeedSet=0;
     wheelAngle = 0;
-    delayTimeSet = 0;
 }
 
 void Datashare::writeWheelSpeed(int address, float speedREV, int inputArea, char commandData[])
@@ -65,13 +62,6 @@ void Datashare::writeWheelSpeed(int address, float speedREV, int inputArea, char
     crunchCRC(0);
     commandData[12] = (accum >> 8) & 255;
     commandData[13] = accum & 255;
-}
-
-void Datashare::delayTimeMsecs(int msecs)
-{
-    QTime _Timer = QTime::currentTime().addMSecs(msecs);
-    while(QTime::currentTime()<_Timer)
-        QCoreApplication::processEvents(QEventLoop::AllEvents,100);
 }
 
 void Datashare::crunchCRC(char x)
