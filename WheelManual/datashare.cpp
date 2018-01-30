@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdio>
+#include <termios.h>
 #include <QTime>
 #include <QCoreApplication>
 
@@ -29,7 +30,9 @@ Datashare::Datashare()
     wheelAddress = 0;
     wheelMoveSpeedSet=0;
     wheelAngle = 0;
-    delayTimeSet = 0;
+    delayTimeSet = 5;
+    wheelFrontAngleOffset = 0;
+    wheelRearAngleOffset = 0;
 }
 
 void Datashare::writeWheelSpeed(int address, float speedREV, int inputArea, char commandData[])
@@ -362,5 +365,39 @@ void Datashare::readWheelPositon(int address)
 
     readPositionData[6] = (accum >> 8) & 255;
     readPositionData[7] = accum & 255;
+}
+
+QString Datashare::checkWheelCommunication(void)
+{
+    unsigned char array[100]={0};
+    int numberOFRead;
+    QString str;
+    numberOFRead = read(fd,array,sizeof(array));
+    if(array[0] != 0xa5)
+    {
+        //add function to make system stop!
+        //QMessageBox::critical(NULL,"Communication Wrong!","Wheel Communication has something wrong!");
+    }
+    if(array[1] != 255)
+    {
+        //add function to make system stop!
+        //QMessageBox::critical(NULL,"Communication Wrong!","Wheel Communication has something wrong!");
+    }
+    tcflush(fd,TCIOFLUSH);
+//    for(int i =0;i<numberOFRead;i++)
+//    {
+//        if(array[i]<16)
+//            testStr += '0' +QString::number(array[i],16).toUpper();
+//        else
+//            testStr += QString::number(array[i],16).toUpper();
+//    }
+    for(int i=0;i<numberOFRead;i++)
+    {
+        if(array[i]<16)
+            str += '0' + QString::number(array[i],16).toUpper();
+        else
+            str += QString::number(array[i],16).toUpper();
+    }
+    return str;
 }
 

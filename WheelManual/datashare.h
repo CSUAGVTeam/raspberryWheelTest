@@ -29,6 +29,8 @@ public:
     unsigned int Gr1;
     int wheelAddress;
     int delayTimeSet;
+    int wheelFrontAngleOffset;
+    int wheelRearAngleOffset;
 
      unsigned char accessData[12];
      unsigned char enableData[12];
@@ -39,6 +41,8 @@ public:
      unsigned char readSpeedData[8];
      unsigned char writePositionData[14];
      unsigned char readPositionData[8];
+
+     QString testStr;
 
 public:
     Datashare();
@@ -66,6 +70,8 @@ public:
     void crunchCRC(char x);
 
     void delayTimeMsecs(int msecs);
+
+    QString checkWheelCommunication(void);
 
 signals:
     //void startReading();

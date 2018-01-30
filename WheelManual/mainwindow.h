@@ -50,6 +50,20 @@ private slots:
 
     void on_rotateTogetherButton_clicked();
 
+    void on_resetButton_clicked();
+
+    QByteArray QString2Hex(QString str);
+
+    int ConvertHexChar(char ch);
+
+    void on_cleanCommunicationButton_clicked();
+
+    void on_setFrontOffsetButton_clicked();
+
+    void on_setRearOffsetButton_clicked();
+
+    void on_testButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 };
