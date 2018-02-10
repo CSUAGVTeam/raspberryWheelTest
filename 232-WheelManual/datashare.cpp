@@ -32,7 +32,7 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
     // fd = serialOpen("/dev/ttyUSB0",115200);
     // if(fd<0)
         // QMessageBox::critical(NULL,"Wrong","Setup WiringPi serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
-    openSerial("/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",115200);
+    openSerial("/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",115200);	//打开串口，全部一起打开。
 
     
 	////fd1 = open("/dev/ttyUSB1",O_RDWR|O_NOCTTY| O_NDELAY | O_NONBLOCK); //读写打开 
@@ -65,7 +65,7 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
 	// set_speed(fd4,115200); //设置波特率 
 	// set_Parity(fd4,8,1,'N');
 	
-    i2c_fd1 = wiringPiI2CSetup(i2c_device1);
+    i2c_fd1 = wiringPiI2CSetup(i2c_device1);//打开I2C设备
     if (i2c_fd1 < 0)
         QMessageBox::critical(NULL,"Wrong","Setup I2C device 1 false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
 	
@@ -744,7 +744,7 @@ void Datashare::checkIO()
     if ((!sickWarningSpaceAlert) && (!sickFalse))
     {
         wheelMoveSpeedSetMax +=800; (wheelMoveSpeedSetMax>2400) ? wheelMoveSpeedSetMax = 2400 : 0;
-        systemOnLight = 0;
+        systemOnLight = 1;
         warmingLight = 0;
         alarmLight = 0;
         write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
@@ -782,35 +782,37 @@ void Datashare::writeIO()
     int i2c_write[2];
     variableTobuf();
     i2c_write[0]=i2c_trans_out1(state_output);//低位
-    i2c_write[1]=i2c_trans_out2(state_output);//高位
-    wiringPiI2CWriteReg16(i2c_fd3,i2c_write[0],i2c_write[1]);//向设备3的reg中写入两个字节
+    //i2c_write[1]=i2c_trans_out2(state_output);//高位
+    wiringPiI2CWrite(i2c_fd3,i2c_write[0]);//向设备3的reg中写入两个字节
+	//wiringPiI2CWriteReg16(i2c_fd3,i2c_write[0],i2c_write[1]);//向设备3的reg中写入两个字节
 }
 
 void Datashare::variableTobuf()
 {
-    state_output[0]=chargeContactorPickup;
-    state_output[1]=wheelMoveFrontBrake;
-    state_output[2]=wheelMoveBackBrake;
-    state_output[3]=conveyorForward;
-    state_output[4]=conveyorBack;
-    state_output[5]=conveyorBrake;
-    state_output[6]=liftFrontOn;
-    state_output[7]=liftBackOn;
-	
+    state_output[0]=systemOnLight;
+    state_output[1]=warmingLight;
+    state_output[2]=alarmLight;
+    state_output[3]=sickA;	
+	state_output[4]=sickB;
+    state_output[5]=sickC;
+    state_output[6]=batteryChargeCircuitOn;
+    state_output[7]=chargeStart;
+    // state_output[0]=chargeContactorPickup;
+    // state_output[1]=wheelMoveFrontBrake;
+    // state_output[2]=wheelMoveBackBrake;
+    // state_output[3]=conveyorForward;
+    // state_output[4]=conveyorBack;
+    // state_output[5]=conveyorBrake;
+    // state_output[6]=liftFrontOn;
+    // state_output[7]=liftBackOn;	
     // state_output[8]=systemOnLight;
     // state_output[9]=alarmLight;
     // state_output[10]=warmingLight;
-    // state_output[11]=sickA;
-    
-	state_output[8]=sickA;
-    state_output[9]=warmingLight;
-    state_output[10]=alarmLight;
-    state_output[11]=systemOnLight;
-	
-	state_output[12]=sickB;
-    state_output[13]=sickC;
-    state_output[14]=batteryChargeCircuitOn;
-    state_output[15]=chargeStart;
+    // state_output[11]=sickA;	
+	// state_output[12]=sickB;
+    // state_output[13]=sickC;
+    // state_output[14]=batteryChargeCircuitOn;
+    // state_output[15]=chargeStart;
 }
 
 void Datashare::set_speed(int fd, int speed)

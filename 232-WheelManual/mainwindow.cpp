@@ -76,7 +76,7 @@ void MainWindow::systemOn(void)
 //					mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
 //			}
 //			loopFlag =false;
-            mptr.wheelMoveSpeedSet = 500;
+            mptr.wheelMoveSpeedSet = 0;
             if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
                 mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
 
@@ -659,9 +659,10 @@ void MainWindow::wheelZeroCalibration()
         mptr.writeWheelPosition(00,mptr.wheelRearAngleOffset);
         write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));//fflush(stdout);
         ui->CommunicationEdit->append(tr("The wheelRearAngleOffset is: %1").arg(mptr.wheelRearAngleOffset));
-        mptr.delayTimeMsecs(90000);
-        mptr.calibrationFlag = true;
+        mptr.delayTimeMsecs(6000);
+		mptr.calibrationFlag = true;		
     }
+	
 
 }
 
