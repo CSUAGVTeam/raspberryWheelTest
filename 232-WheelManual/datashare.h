@@ -13,69 +13,64 @@ class Datashare : public QObject
 public:
     explicit Datashare(QObject *parent = NULL);
 
-    int fd;                                 //serial port file identify
-    int fd1,fd2,fd3,fd4,fd5;                    //serial port T1-T4
-    int i2c_fd1,i2c_fd2,i2c_fd3;
-    const int i2c_device1 = 0x26;//三个设备地址
+    int fd;                                 	//serial port file identify，WiFi串口文件标识符
+    int fd1,fd2,fd3,fd4,fd5;                    //serial port T1-T4，fd1-fd4舵机串口文件标识符，fd5为扬声器、电池485文件标识符
+    int i2c_fd1,i2c_fd2,i2c_fd3;				//I2C 文件标识符
+    const int i2c_device1 = 0x26;				//I2C三个设备地址
     const int i2c_device2 = 0x21;
     const int i2c_device3 = 0x23;
-    const int and_buf[16]={0x0001,0x0002,0x0004,0x0008,0x0010,0x0020,0x0040,0x0080,0x0100,0x0200,0x0400,0x0800,0x1000,0x2000,0x4000,0x8000};
-	unsigned int speed_arr[5] = {B115200,B57600 ,B38400, B19200, B9600 };  
-	int name_arr[5] = {115200,57600,38400, 19200,  9600 }; 
-    char seri_send_buzzer1[7]={0x01,0x51,0x01,0x00,0x1c,0x4d,0x02};//normal
-    char seri_send_buzzer2[7]={0x01,0x51,0x02,0x00,0x1c,0x4e,0x02};//alarm
-    char seri_send_buzzer3[7]={0x01,0x51,0x03,0x00,0x1c,0x4f,0x02};//bar
+    const int and_buf[16]={0x0001,0x0002,0x0004,0x0008,0x0010,0x0020,0x0040,0x0080,0x0100,0x0200,0x0400,0x0800,0x1000,0x2000,0x4000,0x8000};//IO数据转换用数组
+	unsigned int speed_arr[5] = {B115200,B57600 ,B38400, B19200, B9600 };  //波特率设置数组
+	int name_arr[5] = {115200,57600,38400, 19200,  9600 }; 					//波特率设置数组
+    char seri_send_buzzer1[7]={0x01,0x51,0x01,0x00,0x1c,0x4d,0x02};			//normal	扬声器正常报文
+    char seri_send_buzzer2[7]={0x01,0x51,0x02,0x00,0x1c,0x4e,0x02};			//alarm		扬声器报警报文
+    char seri_send_buzzer3[7]={0x01,0x51,0x03,0x00,0x1c,0x4f,0x02};			//bar		扬声器警告报文
 
-    int state_input[2][16];	//I/O口读取外部信息
-    int state_output[16];//I/O输出控制
-    //void value_input;//将变量输入state_input数组
+    int state_input[2][16];													//I/O口读取外部信息
+    int state_output[16];													//I/O输出控制
 
-    unsigned char gainAccess[12]={0xA5, 0x3F, 0x02, 0x07, 0x00, 0x01, 0xB3, 0xE7, 0x0F, 0x00, 0x10, 0x3E};
-    unsigned char enableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x00, 0x00, 0x00, 0x00};
-    unsigned char disableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x01, 0x00, 0x33, 0x31};
-    unsigned char readCurrentData[8] = {0xA5,0x3F,0x01,0x10,0x03,0x01,0xBB,0x9B};
-    unsigned char readSpeedData[8] = {0xA5,0x3F,0x01,0x11,0x02,0x8F,0xF9};
-    unsigned char readPositionData[8] = {0xA5,0x3F,0x01,0x12,0x00,0x02,0xB0,0xCB};
-//    unsigned char gainAccess1[12]={0xa5,0x01,0x02,0x07,0x00,0x01,0x70,0xa1,0x0f,0x00,0x01,0x3e};
-//    unsigned char gainAccess3[12]={0xa5,0x03,0x02,0x07,0x00,0x01,0x34,0x22,0x0f,0x00,0x01,0x3e};
+    unsigned char gainAccess[12]={0xA5, 0x3F, 0x02, 0x07, 0x00, 0x01, 0xB3, 0xE7, 0x0F, 0x00, 0x10, 0x3E};						//获取舵机权限报文
+    unsigned char enableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x00, 0x00, 0x00, 0x00};				//使能舵机报文
+    unsigned char disableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x01, 0x00, 0x33, 0x31};			//断连舵机报文
+    unsigned char readCurrentData[8] = {0xA5,0x3F,0x01,0x10,0x03,0x01,0xBB,0x9B};												//读取电流报文
+    unsigned char readSpeedData[8] = {0xA5,0x3F,0x01,0x11,0x02,0x8F,0xF9};														//读取速度报文
+    unsigned char readPositionData[8] = {0xA5,0x3F,0x01,0x12,0x00,0x02,0xB0,0xCB};												//读取角度报文
 
-//    char write500RPM[14]={0xa5,0x00,0x02,0x45,0x00,0x02,0x99,0x5e,0x55,0x55,0x03,0x00,0x29,0x13};
-//    char write500RPMreverse[14]={0xa5,0x00,0x02,0x45,0x00,0x02,0xf0,0x49,0xab,0xaa,0xfc,0xff,0xc6,0x68};
-    char write0RPM[14];
-    char commanData[14];
-    char commanDataReverse[14];
-    float AGVSpeed;
-    float getSpeedString;
-    float wheelMoveSpeedSet;
-    float wheelMoveSpeedSetMax;
-    float wheelMoveSpeedReadFront;
-    float wheelMoveSpeedReadRear;
-    float wheelAngle;
-    float wheelAngle2=0;
+    char write0RPM[14];								//舵机停车，0速报文存放地址																							
+    char commanData[14];							//舵机写速度报文存放数组
+    char commanDataReverse[14];						//舵机反响写速度报文存放数组
+    float AGVSpeed;									//AGV速度
+    float getSpeedString;							//放弃不用
+    float wheelMoveSpeedSet;						//舵机设定速度
+    float wheelMoveSpeedSetMax;						//舵机设定速度上限
+    float wheelMoveSpeedReadFront;					//舵机前轮速度（读取值）
+    float wheelMoveSpeedReadRear;					//舵机后轮速度（读取值）
+    float wheelAngle;								//舵机角度
+    float wheelAngle2=0;								
     float wheelAngle4=0;
-    float wheelFrontAngle;
+    float wheelFrontAngle;			
     float wheelRearAngle;
-    unsigned int accum;
-    unsigned int Gr1;
-    int wheelAddress;
-    int delayTimeSet;
-    int wheelFrontAngleOffset;
-    int wheelRearAngleOffset;
+	int wheelFrontAngleOffset;						//舵机前轮偏移量
+    int wheelRearAngleOffset;						//舵机后轮偏移量
+    unsigned int accum;								//CRC校验
+    unsigned int Gr1;								//CRC校验
+    int wheelAddress;								//舵机地址选择
+    int delayTimeSet;								//延时数据
+    
+    bool initialReady = false;                                          //check whether the system has iniitaled,true=ready,flase=not ready 初始化完成标志
+    bool breakFlag = true;                                              //judge MainWindow::systemOn() loop whether to stop					手自切换标志
+    bool calibrationFlag = false;					//舵机校零完成标志
 
-    bool initialReady = false;                                          //check whether the system has iniitaled,true=ready,flase=not ready
-    bool breakFlag = true;                                              //judge MainWindow::systemOn() loop whether to stop
-    bool calibrationFlag = false;
-
-    bool wheelCommunicationErrorFlag = false;
-    bool emergencyFlag = false;
-    bool sickWarningSpaceAlert = false;
-    bool sickFalse = false;
-    bool steerFrontLimitDetect = false;
-    bool steerFrontLimitDetect2 = false;
-    bool steerBackLimitDetect = false;
-    bool steerBackLimitDetect2 = false;
-    bool steerLimitDetectFlag = false;
-    bool chargeContectorConnect, reserve,conveyorDriveOKFlag, liftSwitchFlag;
+    bool wheelCommunicationErrorFlag = false;		//舵机通讯错误标志
+    bool emergencyFlag = false;						//紧急情况标志（目前未使用）
+    bool sickWarningSpaceAlert = false;				//sick警报区1标志
+    bool sickFalse = false;							//sick警报区2标志
+    bool steerFrontLimitDetect = false;				//前轮左极限
+    bool steerFrontLimitDetect2 = false;			//前轮右极限
+    bool steerBackLimitDetect = false;				//后轮右极限
+    bool steerBackLimitDetect2 = false;				//后轮左极限
+    bool steerLimitDetectFlag = false;				//舵轮极限标志位（放弃）
+    bool chargeContectorConnect, reserve,conveyorDriveOKFlag, liftSwitchFlag;						//bool型变量为IO口标志位，变量表中详细讲述
     bool powerOn, chargeConnectReady, chargeOn, chargeComplete, chargerFalse, liftFrontUpDetect, liftFrontDownDetect,
         liftBacktUpDetect, liftBackDownDetect, conveyorFrontArriveDetect, convryorFrontInterfaceDetect, conveyorBackArriveDetect,
         conveyorBackInterfaceDetect, steerFrontZeroPositionDetect, steerBackZeroPositionDetect, wheelMoveFrontFalseFlag,
@@ -90,7 +85,7 @@ public:
     bool systemOnFlag = true;
 
 
-     unsigned char accessData[12];
+     unsigned char accessData[12];						//报文存放数组
      unsigned char enableData[12];
      unsigned char disableData[12];
      unsigned char writeCurrentData[14];

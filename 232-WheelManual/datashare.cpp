@@ -26,72 +26,39 @@
 
 Datashare::Datashare(QObject *parent) : QObject(parent)
 {
-    if(wiringPiSetup()==-1)
+    if(wiringPiSetup()==-1)										//wiringPi启动
             QMessageBox::critical(NULL,"Wrong","Setup WiringPi false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
  
-    // fd = serialOpen("/dev/ttyUSB0",115200);
-    // if(fd<0)
-        // QMessageBox::critical(NULL,"Wrong","Setup WiringPi serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
     openSerial("/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",115200);	//打开串口，全部一起打开。
-
-    
-	////fd1 = open("/dev/ttyUSB1",O_RDWR|O_NOCTTY| O_NDELAY | O_NONBLOCK); //读写打开 
-	// fd1 = serialOpen("/dev/ttyUSB1",115200);
-	// if(fd1<0)
-        // QMessageBox::critical(NULL,"Wrong","Setup T11 serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
-	////fd1 = openSerial("dev/ttyUSB1",115200);
-
-	////set_speed(fd1,115200); //设置波特率 
-	////set_Parity(fd1,8,1,'N');
-
-	// fd2 = open("/dev/ttyUSB2",O_RDWR|O_NOCTTY| O_NDELAY | O_NONBLOCK); //读写打开 
-	////fd2 = serialOpen("dev/ttyUSB2",115200);
-    // if(fd2<0)
-        // QMessageBox::critical(NULL,"Wrong","Setup T2 serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
-	// set_speed(fd2,115200); //设置波特率 
-	// set_Parity(fd2,8,1,'N');
 	
-    // fd3 = open("/dev/ttyUSB3",O_RDWR|O_NOCTTY| O_NDELAY | O_NONBLOCK); //读写打开 
-	////fd3 = serialOpen("dev/ttyUSB3",115200);
-	// if(fd3<0)
-        // QMessageBox::critical(NULL,"Wrong","Setup T3 serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
-	// set_speed(fd3,115200); //设置波特率 
-	// set_Parity(fd3,8,1,'N');
-	
-    // fd4 = open("/dev/ttyUSB4",O_RDWR|O_NOCTTY| O_NDELAY | O_NONBLOCK); //读写打开
-	////fd4 = serialOpen("dev/ttyUSB4",115200);
-	// if(fd4<0)
-        // QMessageBox::critical(NULL,"Wrong","Setup T4 serial port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
-	// set_speed(fd4,115200); //设置波特率 
-	// set_Parity(fd4,8,1,'N');
-	
-    i2c_fd1 = wiringPiI2CSetup(i2c_device1);//打开I2C设备
+    i2c_fd1 = wiringPiI2CSetup(i2c_device1);					//打开I2C设备（输入点）
     if (i2c_fd1 < 0)
         QMessageBox::critical(NULL,"Wrong","Setup I2C device 1 false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
 	
 	wiringPiI2CWriteReg8(i2c_fd1,0x00,0x00);
 
-    i2c_fd2 = wiringPiI2CSetup(i2c_device2);
+    i2c_fd2 = wiringPiI2CSetup(i2c_device2);					//打开I2C设备（输入点）
     if (i2c_fd2 < 0)
         QMessageBox::critical(NULL,"Wrong","Setup I2C device 2 false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
 
-    i2c_fd3 = wiringPiI2CSetup(i2c_device3);
+    i2c_fd3 = wiringPiI2CSetup(i2c_device3);					//打开I2C设备（输出点）
     if (i2c_fd3 < 0)
         QMessageBox::critical(NULL,"Wrong","Setup I2C device 3 false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
 
 
-    Gr1 = 0x0810;
-    getSpeedString=0;
-    wheelAddress = 0;
-    wheelMoveSpeedSet=0;
-    wheelMoveSpeedSetMax = 2000;
-    wheelAngle = 0;
-    delayTimeSet = 5;
-    wheelFrontAngleOffset = 0;
-    wheelRearAngleOffset = 0;
-    connect(this,SIGNAL(timingbeginSignal()),this,SLOT(timingNow()));
+    Gr1 = 0x0810;									//CRC校验使用参数
+    getSpeedString=0;								//放弃不用
+    wheelAddress = 0;								//舵机驱动器地址
+    wheelMoveSpeedSet=0;							//舵机驱动器速度
+    wheelMoveSpeedSetMax = 2000;					//舵机驱动器最大速度
+    wheelAngle = 0;									//舵机打角
+    delayTimeSet = 5;								//延时参数（改为232后放弃不用了）
+    wheelFrontAngleOffset = 0;						//前轮打角偏移量
+    wheelRearAngleOffset = 0;						//后轮打角偏移量
+    connect(this,SIGNAL(timingbeginSignal()),this,SLOT(timingNow()));		// 定时信号与定时槽连通（放弃不用）
 }
 
+/***********************生成速度报文**********************************************************************************************/
 void Datashare::writeWheelSpeed(float speedREV, int inputArea, char commandData[])
 {
     int speed;
@@ -127,6 +94,7 @@ void Datashare::writeWheelSpeed(float speedREV, int inputArea, char commandData[
     commandData[13] = accum & 255;
 }
 
+/***********************延时函数（非阻塞模式）***************************************************************************************/
 void Datashare::delayTimeMsecs(int msecs)
 {
     QTime _Timer = QTime::currentTime().addMSecs(msecs);
@@ -134,6 +102,7 @@ void Datashare::delayTimeMsecs(int msecs)
         QCoreApplication::processEvents(QEventLoop::AllEvents,100);
 }
 
+/************************报文校验用函数********************************************************************************************/
 void Datashare::crunchCRC(char x)
 {
     int i, k;
@@ -153,6 +122,7 @@ void Datashare::crunchCRC(char x)
     }
 }
 
+/************************生成获取舵机权限报文（可以弃用了）********************************************************************************************/
 void Datashare::writeAccessToDrive(int address)      //  give up
 {
     accessData[0] = 0xa5;
@@ -187,6 +157,7 @@ void Datashare::writeAccessToDrive(int address)      //  give up
     accessData[11] = accum & 255;
 }
 
+/*************************生成桥使能报文（可以弃用了）*******************************************************************************************/
 void Datashare::enableBridge(int address)            //  give up
 {
     enableData[0] = 0xa5;
@@ -221,6 +192,7 @@ void Datashare::enableBridge(int address)            //  give up
     enableData[11] = accum & 255;
 }
 
+/***************************生成桥断连报文（可以弃用了）*****************************************************************************************/
 void Datashare::disableBridge(int address)           //  give up
 {
     disableData[0] = 0xa5;
@@ -255,6 +227,7 @@ void Datashare::disableBridge(int address)           //  give up
     disableData[11] = accum & 255;
 }
 
+/****************************生成电流设置报文****************************************************************************************/
 void Datashare::writeWheelCurrent(int inputArea, float currentAMPS)
 {
     int current;
@@ -291,6 +264,7 @@ void Datashare::writeWheelCurrent(int inputArea, float currentAMPS)
 
 }
 
+/********************************生成读电流报文************************************************************************************/
 void Datashare::readWheelCurrent(int address)        // give up
 {
     readCurrentData[0] = 0xa5;
@@ -312,6 +286,7 @@ void Datashare::readWheelCurrent(int address)        // give up
     readCurrentData[7] = accum & 255;
 }
 
+/*********************************生成写速度报文***********************************************************************************/
 void Datashare::writeWheelSpeed(int inputArea, float speedREV)          //give up
 {
     int speed;
@@ -347,6 +322,7 @@ void Datashare::writeWheelSpeed(int inputArea, float speedREV)          //give u
     writeSpeedData[13] = accum & 255;
 }
 
+/*****************************生成读速度报文***************************************************************************************/
 void Datashare::readWheelSpeed(int address)          // give up
 {
     readSpeedData[0] = 0xa5;
@@ -368,6 +344,7 @@ void Datashare::readWheelSpeed(int address)          // give up
     readSpeedData[7] = accum & 255;
 }
 
+/******************************报文转换函数（读取速度）**************************************************************************************/
 float Datashare::convertTelegramHex2Speed(unsigned char array[])
 {
     if(array[0]==0xaf && array[1]==0xff)
@@ -388,6 +365,7 @@ float Datashare::convertTelegramHex2Speed(unsigned char array[])
     }
 }
 
+/********************************生成位置设置报文（舵机打角）************************************************************************************/
 void Datashare::writeWheelPosition(int inputArea, float positonANGLE)
 {
     int position;
@@ -423,6 +401,7 @@ void Datashare::writeWheelPosition(int inputArea, float positonANGLE)
     writePositionData[13] = accum & 255;
 }
 
+/**********************************生成读取位置报文（可以弃用了）**********************************************************************************/
 void Datashare::readWheelPositon(int address)       //give up
 {
     readPositionData[0] = 0xa5;
@@ -444,6 +423,7 @@ void Datashare::readWheelPositon(int address)       //give up
     readPositionData[7] = accum & 255;
 }
 
+/**********************************报文转换函数(打角）**********************************************************************************/
 float Datashare::convertTelegramHex2Angle(unsigned char array[])
 {
     if (array[0]==0xaf && array[1]==0xff)
@@ -464,6 +444,7 @@ float Datashare::convertTelegramHex2Angle(unsigned char array[])
     }
 }
 
+/**********************************报文检验函数（可以弃用了）**********************************************************************************/
 QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
 {
     unsigned char array[20]={0};
@@ -498,6 +479,7 @@ QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
     return str;
 }
 
+/************************************生成速度设置函数（重载）********************************************************************************/
 void Datashare::writeWheelSpeed(float speedREV)
 {
     unsigned char array[14];
@@ -535,6 +517,7 @@ void Datashare::writeWheelSpeed(float speedREV)
     write(fd, array, sizeof(array));
 }
 
+/**************************************计时函数（弃用）******************************************************************************/
 void Datashare::timingNow()
 {
     while(1)
@@ -558,11 +541,13 @@ void Datashare::timingNow()
     }
 }
 
+/***************************************信号发送函数（弃用）*****************************************************************************/
 void Datashare::sendSignal()
 {
     emit timingbeginSignal();
 }
 
+/***************************************i2c读取函数*****************************************************************************/
 int Datashare::i2c_trans_in(int i2c_v,int num)
 {
     int temp;
@@ -571,6 +556,7 @@ int Datashare::i2c_trans_in(int i2c_v,int num)
     return temp;
 }
 
+/****************************************i2c输出函数****************************************************************************/
 int Datashare::i2c_trans_out1(int *p)//低位
 {
     int temp=0;
@@ -581,6 +567,7 @@ int Datashare::i2c_trans_out1(int *p)//低位
     return temp;
 }
 
+/*****************************************i2c输出函数（2）***************************************************************************/
 int Datashare::i2c_trans_out2(int *p)//高位
 {
     int temp = 0;
@@ -591,6 +578,7 @@ int Datashare::i2c_trans_out2(int *p)//高位
     return temp;
 }
 
+/******************************************IO->变量转换函数**************************************************************************/
 void Datashare::bufTOvariable()                         // waiting to check
 {
 	systemOnFlag = state_input[0][0];
@@ -642,6 +630,7 @@ void Datashare::bufTOvariable()                         // waiting to check
     // steerFrontZeroPositionDetect = state_input[1][15];     //赋值
 }
 
+/***************************************读取IO口函数*****************************************************************************/
 void Datashare::readIO()
 {
     unsigned char array[14]= {0};
@@ -685,6 +674,7 @@ void Datashare::readIO()
     checkIO();
 }
 
+/*****************************************获取舵机权限并使能***************************************************************************/
 void Datashare::gainAccessAndEnableWheel(void)
 {
 	unsigned char resetcommand[12] = {0xa5,0x3f,0x02,0x01,0x00,0x01,0x01,0x47,0x00,0x10,0x12,0x31};
@@ -730,6 +720,7 @@ void Datashare::gainAccessAndEnableWheel(void)
 //   delayTimeMsecs(delayTimeSet);
 }
 
+/******************************************检查IO状态并对相应变量做调整**************************************************************************/
 void Datashare::checkIO()
 {
     if (sickWarningSpaceAlert && (!sickFalse))
@@ -777,6 +768,7 @@ void Datashare::checkIO()
 
 }
 
+/***********************************************输出IO口*********************************************************************/
 void Datashare::writeIO()
 {
     int i2c_write[2];
@@ -787,6 +779,7 @@ void Datashare::writeIO()
 	//wiringPiI2CWriteReg16(i2c_fd3,i2c_write[0],i2c_write[1]);//向设备3的reg中写入两个字节
 }
 
+/***********************************************变量转换为输出数组*********************************************************************/
 void Datashare::variableTobuf()
 {
     state_output[0]=systemOnLight;
@@ -815,6 +808,7 @@ void Datashare::variableTobuf()
     // state_output[15]=chargeStart;
 }
 
+/****************************************设置串口速度（可以弃置不用）****************************************************************************/
 void Datashare::set_speed(int fd, int speed)
 {  
   int   i;   
@@ -836,7 +830,8 @@ void Datashare::set_speed(int fd, int speed)
     }    
   }  
 }  
-  
+
+/******************************************设置校验位（可以弃置不用）**************************************************************************/  
 int Datashare::set_Parity(int fd,int databits,int stopbits,int parity)  
 {   
     struct termios options;   
@@ -913,6 +908,7 @@ int Datashare::set_Parity(int fd,int databits,int stopbits,int parity)
     return (TRUE);    
 }
 
+/***********************************打开串口函数 *********************************************************************************/
 int Datashare::openSerial (const char *device, const char *device2, const char *device3, const char *device4, const char *device5, const char *device6, const int baud)
 {
   struct termios options ;

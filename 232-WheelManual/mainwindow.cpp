@@ -36,6 +36,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+/****************系统初始化（包括舵轮权限获取、使能、舵轮校零）并启动系统开始工作**************************************************************************/
 void MainWindow::initialTheSystem(void)
 {
 	mptr.gainAccessAndEnableWheel();
@@ -50,6 +51,7 @@ void MainWindow::initialTheSystem(void)
     systemOn();
 }
 
+/*****************系统运行函数****************************************************************************************************************************/
 void MainWindow::systemOn(void)
 {
 //    float position = 0;
@@ -64,7 +66,7 @@ void MainWindow::systemOn(void)
         countLoop += 1;
         if(countLoop > 6) break;
 		QTime t1;
-        t1 = QTime::currentTime().addSecs(10);
+        t1 = QTime::currentTime().addSecs(10);							//延时1min
 		while (QTime::currentTime()<t1)
         {
 //			if (loopFlag == true)
@@ -76,71 +78,68 @@ void MainWindow::systemOn(void)
 //					mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
 //			}
 //			loopFlag =false;
-            mptr.wheelMoveSpeedSet = 0;
+            mptr.wheelMoveSpeedSet = 0;									//给舵轮速度为零（之后会由控制函数计算出来）
             if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
                 mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
 
 			if(mptr.breakFlag == false)
 			{
-                mptr.readIO();                          //read I/O
+                mptr.readIO();                          //读取数据，IO、舵机等,检查IO数据，输出对应IO数据
 				ui->CommunicationEdit->append(tr("%1 %2 %3").arg(mptr.systemOnFlag).arg(mptr.sickFalse).arg(mptr.sickWarningSpaceAlert));
-                //mptr.checkIO();                         //check whether there are some alarm signals, and act correspondingly. And pull up enmergencyFlag to 1.
-                showIOResult();                         // show the result and jump into a loop waitting for action.
+                showIOResult();                         // 界面显示读数结果，如果急停进入等待复位状态。
 
-				if(mptr.emergencyFlag == false)
+				if(mptr.emergencyFlag == false)			//emergencyFlag目前不使用，可忽略
 				{
-					if(speedBefore != mptr.wheelMoveSpeedSet)
+					if(speedBefore != mptr.wheelMoveSpeedSet)	//如果速度没变化不在对舵轮写速度。  
 					{
 						speedBefore = mptr.wheelMoveSpeedSet;
                         if (mptr.wheelMoveSpeedSet>mptr.wheelMoveSpeedSetMax)
                             mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
+                        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet,00,mptr.commanData);	//生成速度设置报文
+                        write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));			//发送速度设置报文到驱动器
+                        read(mptr.fd1,array,sizeof(array));									//读取串口缓冲区，主要目的是为了清除缓冲区为之后读取速度留下空间。
                         mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet,00,mptr.commanData);
-                        write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
-                        read(mptr.fd1,array,sizeof(array));
-						
-
-                        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet,00,mptr.commanData);
-                        write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+                        write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
                         read(mptr.fd3,array,sizeof(array));
 					}
-                //wifi remote connection, check the command from upper machine.
+				//此处以后添加为WiFi串口读取函数，检查上位机命令
 				}
 				else
 				{
-					//Alarm and show the mistake
-                    mptr.writeWheelSpeed(00,00,mptr.commanData);
-                    write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+					//报警并显示状态到触摸屏（函数未添加）
+                    mptr.writeWheelSpeed(00,00,mptr.commanData);			//将速度置为零
+                    write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
                     read(mptr.fd1,array,sizeof(array));
 					mptr.delayTimeMsecs(mptr.delayTimeSet);
                     mptr.writeWheelSpeed(00,00,mptr.commanData);
-                    write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+                    write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
                     read(mptr.fd3,array,sizeof(array));
 				}
 			}
 			else
 				break;
-            mptr.writeIO();                             // write I/O
-			QApplication::processEvents(QEventLoop::AllEvents,1000);
+            //mptr.writeIO();                             // 数据输出（目前将此函数至于readIO末尾此处可以去掉）
+			QApplication::processEvents(QEventLoop::AllEvents,1000);			//Qt任务队列等待，释放系统资源
 		}
 		loopFlag = true;
-        if (mptr.breakFlag == true)
+        if (mptr.breakFlag == true)												//手自变换时候，AGV停车
         {
             mptr.writeWheelSpeed(00,00,mptr.commanData);
-            write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+            write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
             read(mptr.fd1,array,sizeof(array));
             mptr.delayTimeMsecs(mptr.delayTimeSet);
             mptr.writeWheelSpeed(00,00,mptr.commanData);
-            write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+            write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
             read(mptr.fd3,array,sizeof(array));
             break;
         }
     }
-	mptr.writeWheelSpeed(00,00,mptr.commanData);
-	write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+	mptr.writeWheelSpeed(00,00,mptr.commanData);								//任务队列完成后，停车
+	write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
 	read(mptr.fd1,array,sizeof(array));
 	mptr.delayTimeMsecs(mptr.delayTimeSet);
 	mptr.writeWheelSpeed(00,00,mptr.commanData);
-	write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));//fflush(stdout);
+	write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
 	read(mptr.fd3,array,sizeof(array));
 	ui->CommunicationEdit->append("Halt Success!");
 	mptr.sickA = 0;
@@ -149,6 +148,7 @@ void MainWindow::systemOn(void)
 	mptr.writeIO();
 }
 
+/***********************前进按钮，按压前进，速度为设定值***************************************************************************************/
 void MainWindow::on_forwardButton_pressed()
 {
     switch(mptr.wheelAddress)
@@ -168,6 +168,7 @@ void MainWindow::on_forwardButton_pressed()
     }
 }
 
+/************************前进按钮，弹起停车**************************************************************************************************/
 void MainWindow::on_forwardButton_released()
 {
     switch (mptr.wheelAddress) {
@@ -190,6 +191,7 @@ void MainWindow::on_forwardButton_released()
     }
 }
 
+/****************************后退按钮，按压后退，速度为设定值**********************************************************************************/
 void MainWindow::on_backwardButton_pressed()
 {
     switch (mptr.wheelAddress) {
@@ -211,6 +213,7 @@ void MainWindow::on_backwardButton_pressed()
     }
 }
 
+/*****************************后退按钮，弹起停车***********************************************************************************/
 void MainWindow::on_backwardButton_released()
 {
     switch (mptr.wheelAddress) {
@@ -232,6 +235,7 @@ void MainWindow::on_backwardButton_released()
     }
 }
 
+/******************************速度设定按钮，增速，步长100rpm，最大值2400********************************************************************************/
 void MainWindow::on_setSpeed_clicked()
 {
     QString s;
@@ -242,6 +246,7 @@ void MainWindow::on_setSpeed_clicked()
     ui->speedEdit->setText(s.setNum(mptr.wheelMoveSpeedSet));
 }
 
+/*******************************速度设定按钮，减速，步长100rpm，最小值0*******************************************************************************/
 void MainWindow::on_setButton2_clicked()//speed decrease
 {
     QString s;
@@ -253,6 +258,7 @@ void MainWindow::on_setButton2_clicked()//speed decrease
     ui->speedEdit->setText(s.setNum(mptr.wheelMoveSpeedSet));
 }
 
+/********************************舵机权限获取按钮：1，获取T1、T3权限，2：获取T2、T4权限，3：获取T3权限，4：获取T4权限************************************/
 void MainWindow::on_pushButton_clicked()
 {
     switch (mptr.wheelAddress) {
@@ -282,6 +288,7 @@ void MainWindow::on_pushButton_clicked()
     }
 }
 
+/*********************************舵机使能按钮，效果同上*****************************************************************************/
 void MainWindow::on_pushButton_2_clicked()
 {
     switch (mptr.wheelAddress) {
@@ -310,6 +317,7 @@ void MainWindow::on_pushButton_2_clicked()
     }
 }
 
+/************************************角度增加按钮，用于手动控制舵机打角**************************************************************************/
 void MainWindow::on_addAngleButton_clicked()
 {
     QString s;
@@ -320,6 +328,7 @@ void MainWindow::on_addAngleButton_clicked()
     ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
 }
 
+/*************************************角度减少按钮，用于手动控制舵机打角*************************************************************************/
 void MainWindow::on_decAngleButton_clicked()
 {
     QString s;
@@ -330,6 +339,7 @@ void MainWindow::on_decAngleButton_clicked()
     ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
 }
 
+/*************************************单个舵机旋转按钮，根据地址选择****************************************************************************/
 void MainWindow::on_rotateButton_clicked()
 {
     int array[20] = {0};
@@ -348,18 +358,19 @@ void MainWindow::on_rotateButton_clicked()
     }
 }
 
+/***************************************驱动器地址改变按钮，1-4循环***********************************************************************/
 void MainWindow::on_changeAddButton_clicked()
 {
     QString s;
     mptr.wheelAddress ++;
     if(mptr.wheelAddress>4)
-    //if(mptr.wheelAddress>2)
         mptr.wheelAddress = 1;
     ui->addressEdit->setText(s.setNum(mptr.wheelAddress));
     if(mptr.wheelAddress==1||mptr.wheelAddress==3)
         mptr.writeWheelSpeed(00,00,mptr.write0RPM);
 }
 
+/****************************************断连按钮，效果同获取权限按钮**********************************************************************/
 void MainWindow::on_disableBridge_clicked()
 {
     switch (mptr.wheelAddress) {
@@ -388,6 +399,7 @@ void MainWindow::on_disableBridge_clicked()
     }
 }
 
+/*******************************************延时控制按钮（加），通讯方式改变后放弃不用***********************************************************/
 void MainWindow::on_addTimeButton_clicked()
 {
     QString s;
@@ -395,6 +407,7 @@ void MainWindow::on_addTimeButton_clicked()
     ui->timeEdit->setText(s.setNum(mptr.delayTimeSet));
 }
 
+/*******************************************延时控制按钮（减），通讯方式改变后放弃不用***********************************************************/
 void MainWindow::on_decTimeButton_clicked()
 {
     QString s;
@@ -404,6 +417,7 @@ void MainWindow::on_decTimeButton_clicked()
     ui->timeEdit->setText(s.setNum(mptr.delayTimeSet));
 }
 
+/*********************************************前后轮联动旋转按钮，同时从零位转动相同角度***********************************************************/
 void MainWindow::on_rotateTogetherButton_clicked()
 {
     if(mptr.wheelAddress ==2 )
@@ -417,6 +431,7 @@ void MainWindow::on_rotateTogetherButton_clicked()
     }
 }
 
+/***********************************************reset命令发送按钮，用于舵机驱动器重置***************************************************************/
 void MainWindow::on_resetButton_clicked()
 {
     int array[20] = {0};
@@ -431,6 +446,7 @@ void MainWindow::on_resetButton_clicked()
     read(mptr.fd4,array,sizeof(array));
 }
 
+/**********************************************报文显示函数****************************************************************/
 QByteArray MainWindow::QString2Hex(QString str)
 {
     QByteArray senddata;
@@ -465,6 +481,7 @@ QByteArray MainWindow::QString2Hex(QString str)
             return senddata;
 }
 
+/*********************************************16进制与字符穿互换函数*****************************************************************/
 int MainWindow::ConvertHexChar(char ch)
 {
     if((ch >= '0') && (ch <= '9'))
@@ -476,11 +493,13 @@ int MainWindow::ConvertHexChar(char ch)
     else return (-1);
 }
 
+/*********************************************清楚显示区*****************************************************************/
 void MainWindow::on_cleanCommunicationButton_clicked()
 {
     ui->CommunicationEdit->clear();
 }
 
+/**********************************************设置前轮偏移量函数****************************************************************/
 void MainWindow::on_setFrontOffsetButton_clicked()
 {
     QString s;
@@ -492,6 +511,7 @@ void MainWindow::on_setFrontOffsetButton_clicked()
     }
 }
 
+/**********************************************设置后轮偏移量函数***************************************************************/
 void MainWindow::on_setRearOffsetButton_clicked()
 {
     QString s;
@@ -503,6 +523,7 @@ void MainWindow::on_setRearOffsetButton_clicked()
     }
 }
 
+/***********************************************232测试按钮函数，目前放弃不用***************************************************************/
 void MainWindow::on_testButton_clicked()
 {
     unsigned char testarray[12] = {0xA5, 0x3F, 0x02, 0x07, 0x00, 0x01, 0xB3, 0xE7, 0x0F, 0x00, 0x10, 0x3E};
@@ -522,10 +543,11 @@ void MainWindow::on_testButton_clicked()
 
 }
 
+/************************************************自动运行按钮**************************************************************/
 void MainWindow::on_autoRunButton_clicked()
 {
     ui->addTimeButton->setEnabled(false);                               //we can change a window next time to avoid write so much code to hide the widgets
-    ui->addAngleButton->setEnabled(false);
+    ui->addAngleButton->setEnabled(false);								//我们后期可以改变成为两个串口，便无需设定无效这么多控件
     ui->backwardButton->setEnabled(false);
     ui->changeAddButton->setEnabled(false);
     ui->pushButton->setEnabled(false);
@@ -553,10 +575,11 @@ void MainWindow::on_autoRunButton_clicked()
 
 }
 
+/**************************************************停止自动运行按钮，自动运行转为手动模式，可视为急停****************************************************/
 void MainWindow::on_stopAutorunButton_clicked()
 {
     QString s;
-    ui->addTimeButton->setEnabled(true);
+    ui->addTimeButton->setEnabled(true);									//手动按钮重新使能
     ui->addAngleButton->setEnabled(true);
     ui->backwardButton->setEnabled(true);
     ui->changeAddButton->setEnabled(true);
@@ -576,7 +599,7 @@ void MainWindow::on_stopAutorunButton_clicked()
     ui->setRearOffsetButton->setEnabled(true);
     ui->testButton->setEnabled(true);
     ui->testButton2->setEnabled(true);
-    mptr.wheelAddress = 0;
+    mptr.wheelAddress = 0;																//部分手动参数归零，归位
     mptr.wheelMoveSpeedSet=0;
     mptr.wheelAngle = 0;
     mptr.delayTimeSet = 5;
@@ -590,6 +613,7 @@ void MainWindow::on_stopAutorunButton_clicked()
     mptr.breakFlag = true;
 }
 
+/*******************************舵机转向轮校零函数*******************************************************************************/
 void MainWindow::wheelZeroCalibration()
 {
     int array[20] = {0};
@@ -612,10 +636,10 @@ void MainWindow::wheelZeroCalibration()
     {
         if(mptr.breakFlag==false)
         {
-            mptr.readIO();                                   //read I/O
+            mptr.readIO();                                   //read I/O		读取IO，
 				ui->CommunicationEdit->append(tr("%1 %2 %3").arg(mptr.systemOnFlag).arg(mptr.sickFalse).arg(mptr.sickWarningSpaceAlert));
 
-            do{                                              //filter
+            do{                                              //filter		IO口滤波
                 steerFrontLimitTemp = mptr.steerFrontLimitDetect2;
                 steerBackLimitTemp = mptr.steerFrontLimitDetect;
                 mptr.readIO();
@@ -638,7 +662,7 @@ void MainWindow::wheelZeroCalibration()
             {
                 mptr.wheelAngle4 += 1;
                 mptr.writeWheelPosition(00,mptr.wheelAngle4);
-                write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));//fflush(stdout);
+                write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
             }
             else
                 limitFlag4 = true;
@@ -647,17 +671,17 @@ void MainWindow::wheelZeroCalibration()
         else
             break;
     }
-    if(mptr.breakFlag == false)
+    if(mptr.breakFlag == false)														
     {
-        mptr.wheelFrontAngleOffset = mptr.wheelAngle2 - 102;                        //   right(clockwise):107, (anti-clockwise)left:97
+        mptr.wheelFrontAngleOffset = mptr.wheelAngle2 - 102;                  
         mptr.wheelRearAngleOffset = mptr.wheelAngle4 - 102;
 
         mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
-        write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
+        write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
         ui->CommunicationEdit->append(tr("The wheelFrontAngleOffset is: %1").arg(mptr.wheelFrontAngleOffset));
 
         mptr.writeWheelPosition(00,mptr.wheelRearAngleOffset);
-        write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));//fflush(stdout);
+        write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
         ui->CommunicationEdit->append(tr("The wheelRearAngleOffset is: %1").arg(mptr.wheelRearAngleOffset));
         mptr.delayTimeMsecs(6000);
 		mptr.calibrationFlag = true;		
@@ -666,6 +690,7 @@ void MainWindow::wheelZeroCalibration()
 
 }
 
+/*********************************读取到的IO口状态显示到界面上*****************************************************************************/
 void MainWindow::showIOResult()
 {
     QString s;
@@ -694,6 +719,7 @@ void MainWindow::showIOResult()
     }
 }
 
+/***********************************刷IO口Q点，全部置为零***************************************************************************/
 void MainWindow::on_refreshIOButton_clicked()
 {
     int i2c_write[2];
@@ -702,6 +728,7 @@ void MainWindow::on_refreshIOButton_clicked()
     wiringPiI2CWriteReg16(mptr.i2c_fd3,i2c_write[0],i2c_write[1]);//向设备3的reg中写入两个字节
 }
 
+/************************************右平移按钮，按压执行**************************************************************************/
 void MainWindow::on_parallelRightButton_pressed()
 {
     int array[20]= {0};
@@ -711,7 +738,7 @@ void MainWindow::on_parallelRightButton_pressed()
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
     write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);						//舵轮从开始打角到平移开始，延时
 
     mptr.writeWheelSpeed(00,100);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
@@ -720,6 +747,7 @@ void MainWindow::on_parallelRightButton_pressed()
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 }
 
+/*************************************右面平移按钮，弹起归位*************************************************************************/
 void MainWindow::on_parallelRightButton_released()
 {
     int array[20]={0};
@@ -729,7 +757,7 @@ void MainWindow::on_parallelRightButton_released()
     mptr.writeWheelSpeed(00,00);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);							//延时
 
     mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);           // angle to zero
     write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
@@ -739,6 +767,7 @@ void MainWindow::on_parallelRightButton_released()
 
 }
 
+/*************************************左平移按钮，按压执行*************************************************************************/
 void MainWindow::on_parallelLeftButton_pressed()
 {
     int array[20]= {0};
@@ -748,7 +777,7 @@ void MainWindow::on_parallelLeftButton_pressed()
     mptr.writeWheelPosition(00,-90+mptr.wheelRearAngleOffset);
     write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);							//延时
 
     mptr.writeWheelSpeed(00,100);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
@@ -758,6 +787,7 @@ void MainWindow::on_parallelLeftButton_pressed()
 
 }
 
+/***************************************左平移按钮，弹起归位***********************************************************************/
 void MainWindow::on_parallelLeftButton_released()
 {
     int array[20]={0};
@@ -767,7 +797,7 @@ void MainWindow::on_parallelLeftButton_released()
     mptr.writeWheelSpeed(00,00);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);							//延时
 
     mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);           // angle to zero
     write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
@@ -777,6 +807,7 @@ void MainWindow::on_parallelLeftButton_released()
 
 }
 
+/***************************************顺时针旋转按钮，按压执行***********************************************************************/
 void MainWindow::on_rotateLeftButton_pressed()
 {
     int array[20]= {0};
@@ -786,7 +817,7 @@ void MainWindow::on_rotateLeftButton_pressed()
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
     write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);									//延时
 
     mptr.writeWheelSpeed(00,100);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
@@ -796,19 +827,19 @@ void MainWindow::on_rotateLeftButton_pressed()
 
 }
 
-
+/****************************************顺时针旋转按钮，弹起归位**********************************************************************/
 void MainWindow::on_rotateLeftButton_released()
 {
     int array[20]={0};
-    mptr.writeWheelSpeed(00,00);                        //stop AGV
+    mptr.writeWheelSpeed(00,00);                        										//stop AGV
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
     mptr.writeWheelSpeed(00,00);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);																	//延时
 
-    mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);           // angle to zero
+    mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);          	 						// angle to zero
     write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
 
     mptr.writeWheelPosition(00,0+mptr.wheelRearAngleOffset);
@@ -816,6 +847,7 @@ void MainWindow::on_rotateLeftButton_released()
 
 }
 
+/****************************************逆时针旋转按钮，按压执行**********************************************************************/
 void MainWindow::on_rotateRightButton_pressed()
 {
     int array[20]= {0};
@@ -825,7 +857,7 @@ void MainWindow::on_rotateRightButton_pressed()
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
     write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);																//延时
 
     mptr.writeWheelSpeed(00,-100);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
@@ -835,23 +867,22 @@ void MainWindow::on_rotateRightButton_pressed()
 
 }
 
-
+/***************************************逆时针旋转按钮，弹起归位***********************************************************************/
 void MainWindow::on_rotateRightButton_released()
 {
     int array[20]={0};
-    mptr.writeWheelSpeed(00,00);                        //stop AGV
+    mptr.writeWheelSpeed(00,00);                        									//stop AGV
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
     mptr.writeWheelSpeed(00,00);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
-    mptr.delayTimeMsecs(6000);
+    mptr.delayTimeMsecs(6000);																//延时
 
-    mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);           // angle to zero
+    mptr.writeWheelPosition(00,0+mptr.wheelFrontAngleOffset);           					// angle to zero
     write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
 
     mptr.writeWheelPosition(00,0+mptr.wheelRearAngleOffset);
     write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
-
 
 }
