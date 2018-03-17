@@ -98,6 +98,12 @@ private slots:
 
     void on_rotateRightButton_released();
 
+    int Position_PID (int Encoder,int Target);
+
+    int Incremental_PI (int Encoder,int Target);
+
+    void on_setPIDButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

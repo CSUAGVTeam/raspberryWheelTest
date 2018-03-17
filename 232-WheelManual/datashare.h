@@ -14,7 +14,7 @@ public:
     explicit Datashare(QObject *parent = NULL);
 
     int fd;                                 	//serial port file identify，WiFi串口文件标识符
-    int fd1,fd2,fd3,fd4,fd5;                    //serial port T1-T4，fd1-fd4舵机串口文件标识符，fd5为扬声器、电池485文件标识符
+    int fd1,fd2,fd3,fd4,fd5,fd6;                    //serial port T1-T4，fd1-fd4舵机串口文件标识符，fd5为扬声器、电池485文件标识符  fd6 navigation part
     int i2c_fd1,i2c_fd2,i2c_fd3;				//I2C 文件标识符
     const int i2c_device1 = 0x26;				//I2C三个设备地址
     const int i2c_device2 = 0x21;
@@ -35,6 +35,8 @@ public:
     unsigned char readCurrentData[8] = {0xA5,0x3F,0x01,0x10,0x03,0x01,0xBB,0x9B};												//读取电流报文
     unsigned char readSpeedData[8] = {0xA5,0x3F,0x01,0x11,0x02,0x8F,0xF9};														//读取速度报文
     unsigned char readPositionData[8] = {0xA5,0x3F,0x01,0x12,0x00,0x02,0xB0,0xCB};												//读取角度报文
+
+    unsigned char readInertialBuff[8]={0x04,0x03, 0x00, 0x04, 0x00, 0x04, 0x05, 0x9d};          //telegram for reading the navigation part
 
     char write0RPM[14];								//舵机停车，0速报文存放地址																							
     char commanData[14];							//舵机写速度报文存放数组
@@ -84,6 +86,14 @@ public:
     bool sickC = 1;
     bool systemOnFlag = true;
 
+    float KP=0;                                        //PID coefficient
+    float KI = 0;
+    float KD = 0;
+
+    float yaw = 0;
+	float yawLast = 0;
+    float yawTarget = 0;
+	bool yawFlag = false;
 
      unsigned char accessData[12];						//报文存放数组
      unsigned char enableData[12];
@@ -155,7 +165,13 @@ public:
 	
 	int set_Parity(int fd,int databits,int stopbits,int parity);
 	
-    int openSerial (const char *device, const char *device2, const char *device3, const char *device4, const char *device5, const char *device6, const int baud);
+    int openSerial (const char *device, const char *device2, const char *device3, const char *device4, const char *device5, const char *device6, const char *device7, const int baud);
+
+    int Incremental_PI (int Encoder,int Target);
+
+    int Position_PID (int Encoder,int Target);
+
+    float angle_trans(unsigned char low, unsigned char high);
 
 signals:
 

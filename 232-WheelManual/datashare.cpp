@@ -29,7 +29,7 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
     if(wiringPiSetup()==-1)										//wiringPi启动
             QMessageBox::critical(NULL,"Wrong","Setup WiringPi false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
  
-    openSerial("/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",115200);	//打开串口，全部一起打开。
+    openSerial("/dev/ttyUSB0","/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5","/dev/ttyUSB6",115200);	//打开串口，全部一起打开。
 	
     i2c_fd1 = wiringPiI2CSetup(i2c_device1);					//打开I2C设备（输入点）
     if (i2c_fd1 < 0)
@@ -447,7 +447,7 @@ float Datashare::convertTelegramHex2Angle(unsigned char array[])
 /**********************************报文检验函数（可以弃用了）**********************************************************************************/
 QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
 {
-    unsigned char array[20]={0};
+    unsigned char array[50]={0};
     int numberOFRead;
     QString str;
     numberOFRead = read(filedestiny,array,sizeof(array));
@@ -635,6 +635,7 @@ void Datashare::readIO()
 {
     unsigned char array[14]= {0};
     unsigned char array3[14]= {0};
+    unsigned char arrayTemp[20] = {0};
     int numberOfRead;
     //read I/O
     int i2c_read[2] = {0};
@@ -671,6 +672,19 @@ void Datashare::readIO()
 
     // AGVSpeed = wheelMoveSpeedReadFront * cos(wheelFrontAngle) + wheelMoveSpeedReadRear * cos(wheelRearAngle);
 	//
+
+	write(fd6,readInertialBuff,sizeof(readInertialBuff));
+	delayTimeMsecs(8);
+	numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
+	//ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
+	yaw = angle_trans(arrayTemp[4],arrayTemp[3]);
+	if (yawFlag == true)
+	{
+		if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	
+	}
+
+	yawLast =	yaw;
+
     checkIO();
 }
 
@@ -723,13 +737,14 @@ void Datashare::gainAccessAndEnableWheel(void)
 /******************************************检查IO状态并对相应变量做调整**************************************************************************/
 void Datashare::checkIO()
 {
+    int array[20] = {0};
     if (sickWarningSpaceAlert && (!sickFalse))
     {
         wheelMoveSpeedSetMax -=800; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
         systemOnLight = 0;
         warmingLight = 1;
         alarmLight = 0;
-        write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+        //write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
     }      //  unit: r/min ,fix in the future.
 
     if ((!sickWarningSpaceAlert) && (!sickFalse))
@@ -738,7 +753,7 @@ void Datashare::checkIO()
         systemOnLight = 1;
         warmingLight = 0;
         alarmLight = 0;
-        write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+        //write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
     }// The space is available, and add the speed upper limit.
 
     if (sickWarningSpaceAlert & sickFalse)
@@ -747,7 +762,7 @@ void Datashare::checkIO()
         systemOnLight = 0;
         warmingLight = 0;
         alarmLight = 1;
-        write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+        //write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
     }
 
     //if ( sickFalse && (!sickWarningSpaceAlert) )    emergencyFlag = true;                           // check in the future, whether the parameter is useful?
@@ -762,7 +777,14 @@ void Datashare::checkIO()
     sickA = 0;
     sickB = 0;
     sickC = 1;
-	
+
+    //wheelAngle = Incremental_PI(yaw,yawTarget);                                     //PI control the angle of wheel
+    wheelAngle = Position_PID(yaw, yawTarget);                                      //PID Position control the angle of wheel
+    writeWheelPosition(00,-wheelAngle + wheelFrontAngleOffset);
+    write(fd2,writePositionData,sizeof(writePositionData));read(fd2,array,sizeof(array));
+    writeWheelPosition(00,wheelAngle + wheelRearAngleOffset);
+    write(fd4,writePositionData,sizeof(writePositionData));read(fd4,array,sizeof(array));
+
 	writeIO();
 
 
@@ -909,7 +931,7 @@ int Datashare::set_Parity(int fd,int databits,int stopbits,int parity)
 }
 
 /***********************************打开串口函数 *********************************************************************************/
-int Datashare::openSerial (const char *device, const char *device2, const char *device3, const char *device4, const char *device5, const char *device6, const int baud)
+int Datashare::openSerial (const char *device, const char *device2, const char *device3, const char *device4, const char *device5, const char *device6, const char *device7, const int baud)
 {
   struct termios options ;
   struct termios options1;
@@ -985,7 +1007,11 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
       QMessageBox::critical(NULL,"Wrong","Setup Speaker port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
       QMessageBox::critical(NULL,"Wrong",tr("%1").arg(fd5),QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
   }
-  
+    if ((fd6 = open (device7, O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK)) == -1)
+  {
+      QMessageBox::critical(NULL,"Wrong","Setup Speaker port false",QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
+      QMessageBox::critical(NULL,"Wrong",tr("%1").arg(fd6),QMessageBox::Yes|QMessageBox::No,QMessageBox::Yes);
+  }
   
     //return -1 ;
 
@@ -1126,7 +1152,74 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
       status1 |= TIOCM_RTS ;
       ioctl (fd5, TIOCMSET, &status1);
 
+      // open navigation part
+      fcntl (fd6, F_SETFL, O_RDWR) ;
+      tcgetattr (fd6, &options) ;
+        cfmakeraw   (&options) ;
+        cfsetispeed (&options, myBaud) ;
+        cfsetospeed (&options, myBaud) ;
+        options.c_cflag |= (CLOCAL | CREAD) ;
+        options.c_cflag &= ~PARENB ;
+        options.c_cflag &= ~CSTOPB ;
+        options.c_cflag &= ~CSIZE ;
+        options.c_cflag |= CS8 ;
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
+        options.c_oflag &= ~OPOST ;
+        options.c_cc [VMIN]  =   0 ;
+        options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+        tcsetattr (fd6, TCSANOW, &options) ;
+        ioctl (fd6, TIOCMGET, &status);
+        status |= TIOCM_DTR ;
+        status |= TIOCM_RTS ;
+        ioctl (fd6, TIOCMSET, &status);
+
   usleep (10000) ;	// 10mS
 
   return fd ;
 }
+
+/***************************************              **************************************************/
+int Datashare::Incremental_PI (int Encoder,int Target)
+{
+     static int Bias,Pwm,Last_bias;
+     Bias=Target -  Encoder;                //ŒÆËãÆ«²î
+     Pwm+=KP*(Bias-Last_bias)+KI*Bias;   //ÔöÁ¿ÊœPI¿ØÖÆÆ÷
+     if(Pwm>45)Pwm=45;
+     if(Pwm<-45)Pwm=-45;
+     Last_bias=Bias;	                   //±£ŽæÉÏÒ»ŽÎÆ«²î
+     return Pwm;                         //ÔöÁ¿Êä³ö
+}
+
+/***************************************              **************************************************/
+int Datashare::Position_PID (int Encoder,int Target)
+{
+     static float Bias,Pwm,Integral_bias,Last_Bias;
+     Bias=Target - Encoder;                                  //ŒÆËãÆ«²î
+     Integral_bias+=Bias;	                                 //Çó³öÆ«²îµÄ»ý·Ö
+     if(Integral_bias>120)Integral_bias=120;
+     if(Integral_bias<-120)Integral_bias=-120;
+     Pwm=KP*Bias+KI*Integral_bias+KD*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+     Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
+     if (Pwm>45) Pwm = 45;
+     if (Pwm<-45) Pwm = -45;
+     return Pwm;                                           //ÔöÁ¿Êä³ö
+}
+
+/****************************************              ************************************************/
+float Datashare::angle_trans(unsigned char low, unsigned char high)
+{
+  int temp=high*256+low;
+  if((temp<=32767)&(temp>=0))
+   {
+      temp=temp;
+   }
+  if((temp>32767)&(temp<=65536))
+  {
+    temp=temp-65536;
+  }
+  return temp*0.1;
+}
+
+/*****************************************              ************************************************/
+
+
