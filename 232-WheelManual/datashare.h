@@ -6,6 +6,7 @@
 #include<sys/stat.h>  
 #include<fcntl.h>  
 #include<termios.h>  
+#define deltT 0.05                             //time unit
 
 class Datashare : public QObject
 {
@@ -33,7 +34,7 @@ public:
     unsigned char enableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x00, 0x00, 0x00, 0x00};				//使能舵机报文
     unsigned char disableBridgeCommand[12]={0xA5, 0x3F, 0x02, 0x01, 0x00, 0x01, 0x01, 0x47, 0x01, 0x00, 0x33, 0x31};			//断连舵机报文
     unsigned char readCurrentData[8] = {0xA5,0x3F,0x01,0x10,0x03,0x01,0xBB,0x9B};												//读取电流报文
-    unsigned char readSpeedData[8] = {0xA5,0x3F,0x01,0x11,0x02,0x8F,0xF9};														//读取速度报文
+    unsigned char readSpeedData[8] = {0xA5,0x3F,0x01,0x11,0x02,0x02,0x8F,0xF9};														//读取速度报文
     unsigned char readPositionData[8] = {0xA5,0x3F,0x01,0x12,0x00,0x02,0xB0,0xCB};												//读取角度报文
 
     unsigned char readInertialBuff[8]={0x04,0x03, 0x00, 0x04, 0x00, 0x04, 0x05, 0x9d};          //telegram for reading the navigation part
@@ -41,17 +42,23 @@ public:
     char write0RPM[14];								//舵机停车，0速报文存放地址																							
     char commanData[14];							//舵机写速度报文存放数组
     char commanDataReverse[14];						//舵机反响写速度报文存放数组
-    float AGVSpeed;									//AGV速度
-    float getSpeedString;							//放弃不用
-    float wheelMoveSpeedSet;						//舵机设定速度
-    float wheelMoveSpeedSetMax;						//舵机设定速度上限
-    float wheelMoveSpeedReadFront;					//舵机前轮速度（读取值）
-    float wheelMoveSpeedReadRear;					//舵机后轮速度（读取值）
-    float wheelAngle;								//舵机角度
-    float wheelAngle2=0;								
-    float wheelAngle4=0;
-    float wheelFrontAngle;			
-    float wheelRearAngle;
+    double AGVSpeed;									//AGV速度
+    //double AGVSpeedX=0;                              //AGV X axis speed
+    //double AGVSpeedY = 0;                            //AGV Y axis speed
+    //double AGVLocationX = 0;                         //AGV X axis location
+    //double AGVLocationY = 0;                         //AGV Y axis location
+    int num=0;
+    double delta_s;
+    double getSpeedString;							//放弃不用
+    double wheelMoveSpeedSet;						//舵机设定速度
+    double wheelMoveSpeedSetMax;						//舵机设定速度上限
+    double wheelMoveSpeedReadFront = 1;					//舵机前轮速度（读取值）
+    double wheelMoveSpeedReadRear =1;					//舵机后轮速度（读取值）
+    double wheelAngle;								//舵机角度
+    double wheelAngle2=0;
+    double wheelAngle4=0;
+    double wheelFrontAngle;
+    double wheelRearAngle;
 	int wheelFrontAngleOffset;						//舵机前轮偏移量
     int wheelRearAngleOffset;						//舵机后轮偏移量
     unsigned int accum;								//CRC校验
@@ -59,6 +66,7 @@ public:
     int wheelAddress;								//舵机地址选择
     int delayTimeSet;								//延时数据
     
+    bool turn_flag=false;
     bool initialReady = false;                                          //check whether the system has iniitaled,true=ready,flase=not ready 初始化完成标志
     bool breakFlag = true;                                              //judge MainWindow::systemOn() loop whether to stop					手自切换标志
     bool calibrationFlag = false;					//舵机校零完成标志
@@ -86,15 +94,39 @@ public:
     bool sickC = 1;
     bool systemOnFlag = true;
 
-    float KP=0;                                        //PID coefficient
-    float KI = 0;
-    float KD = 0;
+    double KP=31.0;                                        //PID coefficient
+    double KI = 0;
+    double KD = 91.0;
 
-    float yaw = 0;
-	float yawLast = 0;
-    float yawTarget = 0;
+    double KP_turn=60.0;
+    double KI_turn=0;
+    double KD_turn=30.0;
+
+    double yaw = 0;
+    double yawLast = 0;
+    double yawTarget = 0;
+    double yawInt = 0;
+
 	bool yawFlag = false;
 
+    struct Position
+    {
+        double X;
+        double Y;
+    };
+    struct Speed
+    {
+        double X;
+        double Y;
+    };
+     Position AGVLocation={0,0};
+     Position P_Centre={0,0};
+     Position P_Target[4][2]={{{0,0.10},{3,0.10}},
+                              {{3,2},{3,3}},
+                              {{1,5},{0,5}},
+                              {{-2,3},{-2,2}}};
+
+     Speed AGVSpeeds={0,0};
      unsigned char accessData[12];						//报文存放数组
      unsigned char enableData[12];
      unsigned char disableData[12];
@@ -109,9 +141,22 @@ public:
      QString testStr;
 
 public:
+
+    double Position_PID2 (double delta,bool flag);
+
+    double Straight_Line (Position P_Now,Position P_Start,Position P_Target);
+
+    double Go (Position P_Target );
+
+    double angle_tran (double Yaw_Target,double Yaw);
+
+    double Position_Turn2 (Position P_Now,Position P_Target,double Yaw_Target);
+
+    double Position_Turn_crol (Position P_Centre,Position P_Target,Position P_Now,double Radius_turn_sq);
+
     void gainAccessAndEnableWheel(void);
 
-    void writeWheelSpeed(float speedREV, int inputArea, char commandData[14]);
+    void writeWheelSpeed(double speedREV, int inputArea, char commandData[14]);
 
     void writeAccessToDrive(int address);
 
@@ -119,21 +164,21 @@ public:
 
     void disableBridge(int address);
 
-    void writeWheelCurrent(int inputArea, float currentAMPS);
+    void writeWheelCurrent(int inputArea, double currentAMPS);
 
     void readWheelCurrent(int address);
 
-    void writeWheelSpeed(int inputArea, float speedREV);
+    void writeWheelSpeed(int inputArea, double speedREV);
 
     void readWheelSpeed(int address);
 
-    float convertTelegramHex2Speed(unsigned char array[]);
+    double convertTelegramHex2Speed(unsigned char array[]);
 
-    void writeWheelPosition(int inputArea, float positonANGLE);
+    void writeWheelPosition(int inputArea, double positonANGLE);
 
     void readWheelPositon(int address);
 
-    float convertTelegramHex2Angle(unsigned char array[]);
+    double convertTelegramHex2Angle(unsigned char array[]);
 
     void crunchCRC(char x);
 
@@ -141,7 +186,7 @@ public:
 
     QString checkWheelCommunication(int filedestiny);
 
-    void writeWheelSpeed(float speedREV);
+    void writeWheelSpeed(double speedREV);
 
     void sendSignal(void);
 
@@ -171,7 +216,7 @@ public:
 
     int Position_PID (int Encoder,int Target);
 
-    float angle_trans(unsigned char low, unsigned char high);
+    double angle_trans(unsigned char low, unsigned char high);
 
 signals:
 

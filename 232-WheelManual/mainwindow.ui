@@ -244,7 +244,7 @@
      <item>
       <widget class="QLabel" name="RPMlabel">
        <property name="text">
-        <string>RPM/Min</string>
+        <string>m/s</string>
        </property>
       </widget>
      </item>
@@ -391,7 +391,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>RPM/Min</string>
+     <string>M/s</string>
     </property>
    </widget>
    <widget class="QPushButton" name="refreshIOButton">
@@ -423,7 +423,7 @@
    <widget class="QPushButton" name="parallelRightButton">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>350</x>
       <y>350</y>
       <width>89</width>
       <height>25</height>
@@ -498,6 +498,15 @@
       <layout class="QVBoxLayout" name="verticalLayout_8">
        <item>
         <widget class="QDoubleSpinBox" name="kpSpinBox">
+         <property name="maximumSize">
+          <size>
+           <width>91</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximum">
+          <double>200.000000000000000</double>
+         </property>
          <property name="singleStep">
           <double>0.010000000000000</double>
          </property>
@@ -505,6 +514,9 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="kiSpinBox">
+         <property name="decimals">
+          <number>4</number>
+         </property>
          <property name="singleStep">
           <double>0.010000000000000</double>
          </property>
@@ -512,6 +524,15 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="kdSpinBox">
+         <property name="maximumSize">
+          <size>
+           <width>91</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
          <property name="singleStep">
           <double>0.001000000000000</double>
          </property>
@@ -528,6 +549,58 @@
      </item>
     </layout>
    </widget>
+   <widget class="QLabel" name="locationXlabel">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>370</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>370</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>m (X)</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="locationYlabel">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>400</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>400</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>m (Y)</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -535,7 +608,7 @@
      <x>0</x>
      <y>0</y>
      <width>777</width>
-     <height>22</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

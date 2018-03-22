@@ -33,12 +33,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->kiSpinBox->setValue(mptr.KI);
     ui->kdSpinBox->setValue(mptr.KD);
     //ui->rotateButton->setEnabled(false);
-    ui->kpSpinBox->setSingleStep(0.01);
-    ui->kiSpinBox->setSingleStep(0.001);
-    ui->kdSpinBox->setSingleStep(0.0001);
-	ui->kpSpinBox->setValue(6.4);
-	ui->kiSpinBox->setValue(0.12);
-	ui->kdSpinBox->setValue(0);
+    ui->kpSpinBox->setSingleStep(1.0);
+    ui->kiSpinBox->setSingleStep(0.01);
+    ui->kdSpinBox->setSingleStep(1.0);
+    ui->kpSpinBox->setValue(100);
+    ui->kiSpinBox->setValue(0);
+    ui->kdSpinBox->setValue(150);
 }
 
 MainWindow::~MainWindow()
@@ -64,66 +64,53 @@ void MainWindow::initialTheSystem(void)
 /*****************系统运行函数****************************************************************************************************************************/
 void MainWindow::systemOn(void)
 {
-//    float position = 0;
-//    float destination = 600;
     int countLoop = 0;
-
-    float speedBefore=1;
+    double speedBefore=1;
     bool loopFlag=true;
 	unsigned char array[20]= {0};
-	float speedTemp =0;
+    double speedTemp =0;
+    double R=0;
+    mptr.AGVLocation={0,0};
 
-    //just for experiment PID prameter
     mptr.readIO();
-    mptr.yawTarget = mptr.yaw ;
-	mptr.yawLast = mptr.yaw;
+    mptr.yawTarget = mptr.yaw;
+    mptr.yawInt=mptr.yaw;
+    if(mptr.yawInt<0)
+        mptr.yawInt+=360;
+    if(mptr.yawInt>360)
+        mptr.yawInt-=360;
+    mptr.yawLast = mptr.yaw;
 	mptr.yawFlag == true;
     // ///////////////////////////////////////
 	speedTemp = mptr.wheelMoveSpeedSet;
-
+    QTime t1;
+    //t1 = QTime::currentTime().addSecs(60);
     while(1)
     {
-        countLoop += 1;
-        if(countLoop > 6) break;
-		QTime t1;
-        t1 = QTime::currentTime().addSecs(10);							//延时1min
-		while (QTime::currentTime()<t1)
+        int t_1,t_2,delta_t=0;
+        mptr.wheelAddress=2;
+        t_1=QTime::currentTime().msec();
+        //if(QTime::currentTime()>t1)
+        //{
+            //break;
+        //}
+        if(mptr.breakFlag == false)
         {
-//			if (loopFlag == true)
-//			{
-//				mptr.wheelMoveSpeedSet +=500;
-//				if (mptr.wheelMoveSpeedSet>1600)
-//					mptr.wheelMoveSpeedSet = 500;
-//                if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
-//					mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
-//			}
-//			loopFlag =false;
-            //mptr.wheelMoveSpeedSet = 100;									//给舵轮速度为零（之后会由控制函数计算出来）
-			mptr.wheelMoveSpeedSet = speedTemp;
-            if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
-                mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
-
-			if(mptr.breakFlag == false)
-			{
                 mptr.readIO();                          //读取数据，IO、舵机等,检查IO数据，输出对应IO数据
-				
-				
-				
-				
-				//unsigned char arrayTemp[50] = {0};
-				
-                //ui->CommunicationEdit->append(tr("%1 %2 %3").arg(mptr.systemOnFlag).arg(mptr.sickFalse).arg(mptr.sickWarningSpaceAlert));
-                //ui->CommunicationEdit->append(tr("KP:%1,KI:%2,KD:%3").arg(mptr.KP).arg(mptr.KI).arg(mptr.KD));
-				
-                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.yawTarget).arg(mptr.yaw));
-				
-				
-				
-				
-				
-				
-                showIOResult();                         // 界面显示读数结果，如果急停进入等待复位状态。
+               // mptr.angle_tran (mptr.yawTarget);
+                mptr.wheelMoveSpeedSet = speedTemp;//重新设定速度
+                if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
+                    mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
+                mptr.checkIO();
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.yawTarget).arg(mptr.yaw));
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Centre.X).arg(mptr.P_Centre.Y));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVLocation.X).arg(mptr.AGVLocation.Y));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.num).arg(mptr.delta_s));
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Target[1][0].X).arg(mptr.P_Target[1][0].Y));
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.delta_s));
+                //ui->locationYlabel->setNum(mptr.delta_s);
 
+                showIOResult();                         // 界面显示读数结果，如果急停进入等待复位状态。
 				if(mptr.emergencyFlag == false)			//emergencyFlag目前不使用，可忽略
 				{
 					if(speedBefore != mptr.wheelMoveSpeedSet)	//如果速度没变化不在对舵轮写速度。  
@@ -155,30 +142,86 @@ void MainWindow::systemOn(void)
 					mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
 					write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
 					
-				}
-			}
+                }
+        }
 			else
-				break;
-            //mptr.writeIO();                             // 数据输出（目前将此函数至于readIO末尾此处可以去掉）
-			QApplication::processEvents(QEventLoop::AllEvents,1000);			//Qt任务队列等待，释放系统资源
-		}
+                break;
+        QApplication::processEvents(QEventLoop::AllEvents,1000);			//Qt任务队列等待，释放系统资源
 		loopFlag = true;
         if (mptr.breakFlag == true)												//手自变换时候，AGV停车
         {
             mptr.writeWheelSpeed(00,00,mptr.commanData);
             write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
             read(mptr.fd1,array,sizeof(array));
-            mptr.delayTimeMsecs(mptr.delayTimeSet);
+            //mptr.delayTimeMsecs(mptr.delayTimeSet);
+
             mptr.writeWheelSpeed(00,00,mptr.commanData);
             write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
             read(mptr.fd3,array,sizeof(array));
-			mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
-			write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
-			mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
+
+            mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
+            write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
+
+            mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
 			write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
             break;
         }
+        t_2=QTime::currentTime().msec();
+        if(t_2>t_1)
+            delta_t=t_2-t_1;
+        else
+            delta_t=1000+t_2-t_1;
+
+        mptr.AGVLocation.X=mptr.AGVLocation.X+mptr.AGVSpeeds.X*delta_t/1000;        //  航位推算
+        mptr.AGVLocation.Y=mptr.AGVLocation.Y+mptr.AGVSpeeds.Y*delta_t/1000;
+
+/**
+        Dis_NowToTar=(mptr.AGVLocation.X-2)*(mptr.AGVLocation.X-2)+(mptr.AGVSpeeds.Y-0)*(mptr.AGVSpeeds.Y-0);
+        if(Dis_NowToTar<0.0025)
+        {
+            if(num==0)
+            {
+              mptr.yawTarget+=90;
+
+              circle_N=mptr.yawTarget/360;
+              mptr.yawTarget=mptr.yawTarget-circle_N*360;
+
+              mptr.turn_flag=true;
+              R=mptr.Position_Turn2 (mptr.AGVLocation,mptr.P_Target,mptr.yawTarget);
+
+              num+=1;
+            }
+        }
+ **/
+        /**         路径规划        **/
+        ui->locationXlabel->setNum(mptr.turn_flag);//此处显示的位置不能变
+        //R=mptr.Go (mptr.P_Target[mptr.num][1]);
+        if(mptr.num==4)
+            if(mptr.turn_flag==false)
+               mptr.breakFlag = true;
+        if(mptr.turn_flag==true)
+        {
+            if(mptr.num==0)
+            mptr.P_Centre={1,2};
+            if(mptr.num==1)
+              mptr.P_Centre={1,3};
+            if(mptr.num==2)
+              mptr.P_Centre={0,3};
+            if(mptr.num==3)
+              mptr.P_Centre={0,2};
+
+            //mptr.delta_s=mptr.Position_Turn_crol (mptr.P_Centre,mptr.P_Target[0][1],mptr.AGVLocation,R);
+            if(mptr.num+1==4)
+               mptr.delta_s=mptr.Position_Turn_crol (mptr.P_Centre,mptr.P_Target[0][0],mptr.AGVLocation,4);
+            else
+            mptr.delta_s=mptr.Position_Turn_crol (mptr.P_Centre,mptr.P_Target[mptr.num+1][0],mptr.AGVLocation,4);
+        }
+        else
+        {
+            mptr.delta_s=mptr.Straight_Line (mptr.AGVLocation,mptr.P_Target[mptr.num][0],mptr.P_Target[mptr.num][1]);
+        }
     }
+
 	mptr.writeWheelSpeed(00,00,mptr.commanData);								//任务队列完成后，停车
 	write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
 	read(mptr.fd1,array,sizeof(array));
@@ -291,7 +334,7 @@ void MainWindow::on_setSpeed_clicked()
     if (mptr.wheelMoveSpeedSet>=2400)
         mptr.wheelMoveSpeedSet = 2400;
     else
-        mptr.wheelMoveSpeedSet += 100;
+        mptr.wheelMoveSpeedSet += 0.1;
     ui->speedEdit->setText(s.setNum(mptr.wheelMoveSpeedSet));
 }
 
@@ -303,7 +346,7 @@ void MainWindow::on_setButton2_clicked()//speed decrease
     if (mptr.wheelMoveSpeedSet<=0)
         mptr.wheelMoveSpeedSet = 0;
     else
-        mptr.wheelMoveSpeedSet -= 100;
+        mptr.wheelMoveSpeedSet -= 0.1;
     ui->speedEdit->setText(s.setNum(mptr.wheelMoveSpeedSet));
 }
 
@@ -373,7 +416,7 @@ void MainWindow::on_addAngleButton_clicked()
     if(mptr.wheelAngle>=90)
         mptr.wheelAngle = 90;
     else
-        mptr.wheelAngle += 5;
+        mptr.wheelAngle += 0.1;
     ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
 }
 
@@ -384,7 +427,7 @@ void MainWindow::on_decAngleButton_clicked()
     if(mptr.wheelAngle<=-90)
         mptr.wheelAngle = -90;
     else
-        mptr.wheelAngle -=5;
+        mptr.wheelAngle -=0.1;
     ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
 }
 
@@ -394,12 +437,12 @@ void MainWindow::on_rotateButton_clicked()
     int array[20] = {0};
     switch (mptr.wheelAddress) {
     case 2:
-        mptr.writeWheelPosition(00,mptr.wheelAngle+mptr.wheelFrontAngleOffset);
+        mptr.writeWheelPosition(00,mptr.wheelAngle + mptr.wheelFrontAngleOffset);
         write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));//fflush(stdout);
         read(mptr.fd2,array,sizeof(array));
         break;
     case 4:
-        mptr.writeWheelPosition(00,mptr.wheelAngle+mptr.wheelRearAngleOffset);
+        mptr.writeWheelPosition(00,mptr.wheelAngle + mptr.wheelRearAngleOffset);
         write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));//fflush(stdout);
         read(mptr.fd4,array,sizeof(array));
     default:
@@ -554,7 +597,7 @@ void MainWindow::on_setFrontOffsetButton_clicked()
     QString s;
     if(mptr.wheelAddress ==2)
     {
-        mptr.wheelFrontAngleOffset = mptr.wheelAngle;
+        mptr.wheelFrontAngleOffset = mptr.wheelAngle + mptr.wheelFrontAngleOffset;
         mptr.wheelAngle = 0;
         ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
     }
@@ -566,7 +609,7 @@ void MainWindow::on_setRearOffsetButton_clicked()
     QString s;
     if(mptr.wheelAddress == 4)
     {
-        mptr.wheelRearAngleOffset = mptr.wheelAngle;
+        mptr.wheelRearAngleOffset = mptr.wheelAngle + mptr.wheelRearAngleOffset;
         mptr.wheelAngle = 0;
         ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
     }
@@ -686,6 +729,7 @@ void MainWindow::wheelZeroCalibration()
         if(mptr.breakFlag==false)
         {
             mptr.readIO();                                   //read I/O		读取IO，
+            //mptr.checkIO();
 				ui->CommunicationEdit->append(tr("%1 %2 %3").arg(mptr.systemOnFlag).arg(mptr.sickFalse).arg(mptr.sickWarningSpaceAlert));
 
             do{                                              //filter		IO口滤波
@@ -703,6 +747,7 @@ void MainWindow::wheelZeroCalibration()
                 mptr.wheelAngle2 += 1;
                 mptr.writeWheelPosition(00,mptr.wheelAngle2);
                 write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
+                limitFlag2 =false;
             }
             else
                 limitFlag2 = true;
@@ -712,6 +757,7 @@ void MainWindow::wheelZeroCalibration()
                 mptr.wheelAngle4 += 1;
                 mptr.writeWheelPosition(00,mptr.wheelAngle4);
                 write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
+                limitFlag4 = false;
             }
             else
                 limitFlag4 = true;
@@ -722,7 +768,7 @@ void MainWindow::wheelZeroCalibration()
     }
     if(mptr.breakFlag == false)														
     {
-        mptr.wheelFrontAngleOffset = mptr.wheelAngle2 - 102;                  
+        mptr.wheelFrontAngleOffset = mptr.wheelAngle2 - 104;
         mptr.wheelRearAngleOffset = mptr.wheelAngle4 - 102;
 
         mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
@@ -782,17 +828,18 @@ void MainWindow::on_parallelRightButton_pressed()
 {
     int array[20]= {0};
     mptr.writeWheelPosition(00,90+mptr.wheelFrontAngleOffset);
-    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
+    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));
 
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
-    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
+    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));
+    read(mptr.fd4,array,20);read(mptr.fd2,array,20);
 
     mptr.delayTimeMsecs(6000);						//舵轮从开始打角到平移开始，延时
 
-    mptr.writeWheelSpeed(00,100);
+    mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
-    mptr.writeWheelSpeed(00,100);
+    //mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 }
 
@@ -821,17 +868,19 @@ void MainWindow::on_parallelLeftButton_pressed()
 {
     int array[20]= {0};
     mptr.writeWheelPosition(00,-90+mptr.wheelFrontAngleOffset);
-    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
+    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));
 
     mptr.writeWheelPosition(00,-90+mptr.wheelRearAngleOffset);
-    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
+    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));
+
+    read(mptr.fd4,array,20);read(mptr.fd2,array,20);
 
     mptr.delayTimeMsecs(6000);							//延时
 
-    mptr.writeWheelSpeed(00,100);
+    mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
-    mptr.writeWheelSpeed(00,100);
+    //mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
 }
@@ -861,17 +910,18 @@ void MainWindow::on_rotateLeftButton_pressed()
 {
     int array[20]= {0};
     mptr.writeWheelPosition(00,90+mptr.wheelFrontAngleOffset);
-    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
+    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));
 
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
-    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
+    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));
+    read(mptr.fd4,array,20);read(mptr.fd2,array,20);
 
     mptr.delayTimeMsecs(6000);									//延时
 
-    mptr.writeWheelSpeed(00,100);
+    mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
-    mptr.writeWheelSpeed(00,-100);
+    mptr.writeWheelSpeed(00,-mptr.wheelMoveSpeedSet);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
 }
@@ -901,17 +951,18 @@ void MainWindow::on_rotateRightButton_pressed()
 {
     int array[20]= {0};
     mptr.writeWheelPosition(00,90+mptr.wheelFrontAngleOffset);
-    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,20);
+    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));
 
     mptr.writeWheelPosition(00,90+mptr.wheelRearAngleOffset);
-    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,20);
+    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));
+    read(mptr.fd4,array,20);read(mptr.fd2,array,20);
 
     mptr.delayTimeMsecs(6000);																//延时
 
-    mptr.writeWheelSpeed(00,-100);
+    mptr.writeWheelSpeed(00,-mptr.wheelMoveSpeedSet);
     write(mptr.fd1,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd1,array,20);
 
-    mptr.writeWheelSpeed(00,100);
+    mptr.writeWheelSpeed(00,mptr.wheelMoveSpeedSet);
     write(mptr.fd3,mptr.writeSpeedData,sizeof(mptr.writeSpeedData));read(mptr.fd3,array,20);
 
 }
@@ -939,8 +990,8 @@ void MainWindow::on_rotateRightButton_released()
 /*************************************        **************************************************************************************/
 int MainWindow::Position_PID (int Encoder,int Target)
 {
-     static float Bias,Pwm,Integral_bias,Last_Bias;
-     Bias=Encoder-Target;                                  //ŒÆËãÆ«²î
+     static double Bias,Pwm,Integral_bias,Last_Bias;
+     Bias=Target-Encoder;                                  //ŒÆËãÆ«²î
      Integral_bias+=Bias;	                                 //Çó³öÆ«²îµÄ»ý·Ö
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
@@ -969,4 +1020,14 @@ void MainWindow::on_setPIDButton_clicked()
     mptr.KP = ui->kpSpinBox->value();
     mptr.KI = ui->kiSpinBox->value();
     mptr.KD = ui->kdSpinBox->value();
+}
+
+void MainWindow::on_label_3_linkActivated(const QString &link)
+{
+
+}
+
+void MainWindow::on_kdSpinBox_editingFinished()
+{
+
 }

@@ -104,6 +104,10 @@ private slots:
 
     void on_setPIDButton_clicked();
 
+    void on_label_3_linkActivated(const QString &link);
+
+    void on_kdSpinBox_editingFinished();
+
 private:
     Ui::MainWindow *ui;
 };

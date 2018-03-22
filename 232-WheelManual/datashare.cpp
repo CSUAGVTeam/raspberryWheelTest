@@ -59,10 +59,10 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
 }
 
 /***********************生成速度报文**********************************************************************************************/
-void Datashare::writeWheelSpeed(float speedREV, int inputArea, char commandData[])
+void Datashare::writeWheelSpeed(double speedREV, int inputArea, char commandData[])
 {
     int speed;
-    speed = speedREV * 437; //4000 / 60 * 131072 / 20000;
+    speed =(int) (speedREV * 17801.1941*60);//437; //4000 / 60 * 131072 / 20000;
     commandData[0] = 0xa5;
     commandData[1] = 0x3f;                  //address & 255;
     commandData[2] = 0x02;
@@ -228,7 +228,7 @@ void Datashare::disableBridge(int address)           //  give up
 }
 
 /****************************生成电流设置报文****************************************************************************************/
-void Datashare::writeWheelCurrent(int inputArea, float currentAMPS)
+void Datashare::writeWheelCurrent(int inputArea, double currentAMPS)
 {
     int current;
     current = currentAMPS * 32768 / 15 + 0.5;
@@ -287,10 +287,10 @@ void Datashare::readWheelCurrent(int address)        // give up
 }
 
 /*********************************生成写速度报文***********************************************************************************/
-void Datashare::writeWheelSpeed(int inputArea, float speedREV)          //give up
+void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //give up
 {
     int speed;
-    speed = speedREV * 4000 / 60 * 131072 / 20000 + 0.5;
+    speed = (int) (speedREV * 17801.1941*60);//4000 / 60 * 131072 / 20000 + 0.5;
     writeSpeedData[0] = 0xa5;
     writeSpeedData[1] = 0x3f;                       //address & 255;
     writeSpeedData[2] = 0x02;
@@ -345,18 +345,19 @@ void Datashare::readWheelSpeed(int address)          // give up
 }
 
 /******************************报文转换函数（读取速度）**************************************************************************************/
-float Datashare::convertTelegramHex2Speed(unsigned char array[])
+double Datashare::convertTelegramHex2Speed(unsigned char array[])
 {
-    if(array[0]==0xaf && array[1]==0xff)
+    if(array[0]==0xa5 && array[1]==0xff)
     {
-        int HH, H, L, LL, Speed, speedREV;
+        int HH, H, L, LL, Speed;
+        double speedREV;
         HH = (int)(array[11]);
         H = (int)(array[10]);
         L = (int)(array[9]);
         LL = (int)(array[8]);
         Speed = LL + L * 256 + H * 65536 + HH * 16777216;
-        speedREV = Speed * 20000 / 131072 * 60 / 4000;
-        return (float)speedREV;
+        speedREV = Speed / 17801.1941 / 60;//20000 / 131072 * 60 / 4000;
+        return speedREV;
     }
     else
     {
@@ -366,10 +367,10 @@ float Datashare::convertTelegramHex2Speed(unsigned char array[])
 }
 
 /********************************生成位置设置报文（舵机打角）************************************************************************************/
-void Datashare::writeWheelPosition(int inputArea, float positonANGLE)
+void Datashare::writeWheelPosition(int inputArea, double positonANGLE)
 {
     int position;
-    position = positonANGLE * 32512 / 315 + 0.5;
+    position = positonANGLE * 100.794 +0.5;//32512 / 315 * 0.97656 + 0.5;
     writePositionData[0] = 0xa5;
     writePositionData[1] = 0x3f;                      //address & 255;
     writePositionData[2] = 0x02;
@@ -424,9 +425,9 @@ void Datashare::readWheelPositon(int address)       //give up
 }
 
 /**********************************报文转换函数(打角）**********************************************************************************/
-float Datashare::convertTelegramHex2Angle(unsigned char array[])
+double Datashare::convertTelegramHex2Angle(unsigned char array[])
 {
-    if (array[0]==0xaf && array[1]==0xff)
+    if (array[0]==0xa5 && array[1]==0xff)
     {
         int HH, H, L, LL, position, positonANGLE;
         HH = (int)(array[11]);
@@ -434,8 +435,8 @@ float Datashare::convertTelegramHex2Angle(unsigned char array[])
         L = (int)(array[9]);
         LL = (int)(array[8]);
         position = LL + L * 256 + H * 65536 + HH * 16777216;
-        positonANGLE = position * 315 / 32512;
-        return (float)positonANGLE;
+        positonANGLE = position /100.794; //315 / 32512;
+        return (double)positonANGLE;
     }
     else
     {
@@ -480,11 +481,11 @@ QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
 }
 
 /************************************生成速度设置函数（重载）********************************************************************************/
-void Datashare::writeWheelSpeed(float speedREV)
+void Datashare::writeWheelSpeed(double speedREV)
 {
     unsigned char array[14];
     int speed;
-    speed = speedREV * 4000 / 60 * 131072 / 20000;
+    speed = (int) (speedREV * 17801.1941*60);//4000 / 60 * 131072 / 20000;
     array[0] = 0xa5;
     array[1] = 0x3f;
     array[2] = 0x02;
@@ -633,8 +634,10 @@ void Datashare::bufTOvariable()                         // waiting to check
 /***************************************读取IO口函数*****************************************************************************/
 void Datashare::readIO()
 {
-    unsigned char array[14]= {0};
-    unsigned char array3[14]= {0};
+    unsigned char array[20]= {0};
+    unsigned char array2[20] = {0};
+    unsigned char array3[20]= {0};
+    unsigned char array4[20] = {0};
     unsigned char arrayTemp[20] = {0};
     int numberOfRead;
     //read I/O
@@ -650,42 +653,55 @@ void Datashare::readIO()
     bufTOvariable();
 
     // //read the speed of wheel
-    // write(fd1,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
-    // numberOfRead = read(fd1,array,sizeof(array));
-    // wheelMoveSpeedReadFront = convertTelegramHex2Speed(array);
+     write(fd1,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
+     numberOfRead = read(fd1,array,sizeof(array));
+     wheelMoveSpeedReadFront = convertTelegramHex2Speed(array);
 
     // memset(array,0,14*sizeof(unsigned char));
-    // write(fd3,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
-    // numberOfRead = read(fd3,array3,sizeof(array3));
-    // wheelMoveSpeedReadRear = convertTelegramHex2Speed(array3);
+     write(fd3,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
+     numberOfRead = read(fd3,array3,sizeof(array3));
+     wheelMoveSpeedReadRear = convertTelegramHex2Speed(array3);
 
     // //read the angle of wheel
     // memset(array,0,14*sizeof(unsigned char));
-    // write(fd2,readPositionData,sizeof(readPositionData));//fflush(stdout);
-    // numberOfRead = read(fd2,array,sizeof(array));
-    // wheelFrontAngle = convertTelegramHex2Angle(array) - wheelFrontAngleOffset;
+     write(fd2,readPositionData,sizeof(readPositionData));//fflush(stdout);
+     numberOfRead = read(fd2,array2,sizeof(array2));
+     wheelFrontAngle = convertTelegramHex2Angle(array2) - wheelFrontAngleOffset;
 
     // memset(array,0,14*sizeof(unsigned char));
-    // write(fd4,readPositionData,sizeof(readPositionData));//fflush(stdout);
-    // numberOfRead = read(fd4,array,sizeof(array));
-    // wheelRearAngle = convertTelegramHex2Angle(array) - wheelRearAngleOffset;
+     write(fd4,readPositionData,sizeof(readPositionData));//fflush(stdout);
+     numberOfRead = read(fd4,array4,sizeof(array4));
+     wheelRearAngle = convertTelegramHex2Angle(array4) - wheelRearAngleOffset;
 
-    // AGVSpeed = wheelMoveSpeedReadFront * cos(wheelFrontAngle) + wheelMoveSpeedReadRear * cos(wheelRearAngle);
-	//
+     AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2 * cos((wheelFrontAngle+wheelRearAngle)/2*3.14159/180);
+     AGVSpeeds.X=AGVSpeed*cos((yaw-yawInt)*3.14159/180);
+     AGVSpeeds.Y=AGVSpeed*sin((yaw-yawInt)*3.14159/180);
+     // AGVLocationX=AGVLocationX+AGVSpeedX*delayTimeSet/1000;
+     //AGVLocationY=AGVLocationY+AGVSpeedY*delayTimeSet/1000;
+/**
+     AGVSpeedX = wheelMoveSpeedReadFront * cos(wheelFrontAngle*3.14/180) + wheelMoveSpeedReadRear * cos(wheelRearAngle*3.14/180);
+     AGVSpeedY = wheelMoveSpeedReadFront * sin(wheelFrontAngle*3.14/180) + wheelMoveSpeedReadRear * sin(wheelRearAngle*3.14/180);
+     AGVLocationX = AGVSpeedX * cos(yaw*3.14/180) * deltT - AGVSpeedY * sin(yaw*3.14/180) * deltT;
+     AGVLocationY = AGVSpeedX * sin(yaw*3.14/180) * deltT + AGVSpeedY * cos(yaw*3.14/180) * deltT;
+**/
 
 	write(fd6,readInertialBuff,sizeof(readInertialBuff));
 	delayTimeMsecs(8);
 	numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
 	//ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
-	yaw = angle_trans(arrayTemp[4],arrayTemp[3]);
+    yaw = angle_trans(arrayTemp[4],arrayTemp[3]);
+    if(yaw>=0)
+        yaw=yaw;
+    else
+        yaw=yaw+360;
 	if (yawFlag == true)
 	{
-		if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	
+        if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
 	}
 
 	yawLast =	yaw;
 
-    checkIO();
+    //checkIO();
 }
 
 /*****************************************获取舵机权限并使能***************************************************************************/
@@ -779,7 +795,26 @@ void Datashare::checkIO()
     sickC = 1;
 
     //wheelAngle = Incremental_PI(yaw,yawTarget);                                     //PI control the angle of wheel
-    wheelAngle = Position_PID(yaw, yawTarget);                                      //PID Position control the angle of wheel
+    /**
+    if(turn_flag==false)
+    {
+        wheelAngle = Position_PID(yaw, yawTarget);
+
+    }//PID Position control the angle of wheel
+    else
+    {
+        static double Pwm,Integral_bias,Last_Bias;
+        Integral_bias+=delta_s;	                                 //Çó³öÆ«²îµÄ»ý·Ö
+        if(Integral_bias>300)Integral_bias=300;
+        if(Integral_bias<-300)Integral_bias=-300;
+        Pwm=KP_turn*delta_s+KI_turn*Integral_bias+KD_turn*(delta_s-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+        Last_Bias=delta_s;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
+        if (Pwm>45) Pwm = 45;
+        if (Pwm<-45) Pwm = -45;
+        wheelAngle=-Pwm;
+    }
+    **/
+    wheelAngle = Position_PID2 (delta_s,turn_flag);
     writeWheelPosition(00,-wheelAngle + wheelFrontAngleOffset);
     write(fd2,writePositionData,sizeof(writePositionData));read(fd2,array,sizeof(array));
     writeWheelPosition(00,wheelAngle + wheelRearAngleOffset);
@@ -1193,8 +1228,19 @@ int Datashare::Incremental_PI (int Encoder,int Target)
 /***************************************              **************************************************/
 int Datashare::Position_PID (int Encoder,int Target)
 {
-     static float Bias,Pwm,Integral_bias,Last_Bias;
+     static double Bias,Pwm,Integral_bias,Last_Bias;
+     //Bias=angle_tran (Target,Encoder);
      Bias=Target - Encoder;                                  //ŒÆËãÆ«²î
+     if(Bias>180)
+     {
+         Bias=Bias-360;
+     }else if(Bias>=(-180))
+     {
+         Bias=Bias;
+     }else
+     {
+         Bias=Bias+360;
+     }
      Integral_bias+=Bias;	                                 //Çó³öÆ«²îµÄ»ý·Ö
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
@@ -1204,9 +1250,234 @@ int Datashare::Position_PID (int Encoder,int Target)
      if (Pwm<-45) Pwm = -45;
      return Pwm;                                           //ÔöÁ¿Êä³ö
 }
+/***************************************   新版PID         **************************************************/
+double Datashare::Position_PID2 (double delta,bool flag)
+{
+     double Pwm=0;
+     static double Last_delta=0,Integral_delta=0;
+     static double Last_delta_turn=0,Integral_delta_turn=0;
 
+
+     if(flag==false)
+     {
+         Integral_delta+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
+         if(Integral_delta>120)
+             Integral_delta=120;
+         if(Integral_delta<-120)
+             Integral_delta=-120;
+         Pwm=KP*delta+KI*Integral_delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Last_delta=delta;
+     }
+     else
+     {
+         Integral_delta_turn+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
+         if(Integral_delta_turn>300)
+             Integral_delta_turn=300;
+         if(Integral_delta_turn<-300)
+             Integral_delta_turn=-300;
+         Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Last_delta_turn=delta;
+     }
+     if (Pwm>45) Pwm = 45;
+     if (Pwm<-45) Pwm = -45;
+     return Pwm;                                           //ÔöÁ¿Êä³ö
+}
+/***************************************   圆周运动的圆心计算函数       **************************************************/
+/**
+void Datashare::Position_Turn (Position P_Now,Position P_Target,double Yaw_Now,double Yaw_Target)
+{
+    double K_Now,K_Target;
+    double K_Now_vertical,K_Target_vertical;
+    //Position P_Centre;
+
+    K_Now=tan(Yaw_Now-yawInt); K_Target=tan(Yaw_Target-yawInt);
+    K_Now_vertical=-1/K_Now;   K_Target_vertical=-1/K_Target;
+    P_Centre.X=(double)(P_Target.Y-P_Now.Y+K_Now_vertical*P_Now.X-K_Target_vertical*P_Target.X)/(K_Now_vertical-K_Target_vertical);
+    P_Centre.Y=K_Target_vertical*(P_Centre.X-P_Target.X)+P_Target.Y;
+    //return P_Centre;
+}
+**/
+/***************************************   直线路径规划函数      **************************************************/
+double Datashare::Straight_Line (Position P_Now,Position P_Start,Position P_Target)
+{
+    double K_str=0;
+    double delta_x=0;
+    double delta_y=0;
+    double out=0;
+
+    delta_x=P_Target.X-P_Now.X;
+    delta_y=P_Target.Y-P_Now.Y;
+    if(abs(P_Target.X-P_Start.X)>=abs(P_Target.Y-P_Start.Y))
+    {
+        K_str=(double)(P_Target.Y-P_Start.Y)/(P_Target.X-P_Start.X);
+        out=P_Target.Y-delta_x*K_str;
+        return (out-P_Now.Y);
+    }
+    else
+    {
+        K_str=(double)(P_Target.X-P_Start.X)/(P_Target.Y-P_Start.Y);
+        out=P_Target.X-delta_y*K_str;
+        return (out-P_Now.X);
+    }
+
+}
+/***************************************   圆周运动的圆心计算函数（优化）      **************************************************/
+double Datashare::Position_Turn2 (Position P_Now,Position P_Target,double Yaw_Target)
+{
+    double K_And,K_Target;
+    double K_And_vertical,K_Target_vertical;
+    Position P_Middle;
+    double Radius_turn_sq;
+
+    if(P_Target.X==P_Now.X)//防止除数为0
+    {
+            K_And=(double)(P_Target.Y-P_Now.Y)/0.0001;
+    }
+    else
+    {
+    K_And=(double)(P_Target.Y-P_Now.Y)/(P_Target.X-P_Now.X);
+    }
+
+    if((Yaw_Target-yawInt==90)||(Yaw_Target-yawInt==-90))
+    {
+       // P_Centre.X=P_Now.X;
+       // P_Centre.Y=P_Target.Y;
+       // Radius_turn_sq=2;
+        K_Target=9999999;
+    }
+    else
+    {
+      K_Target=tan(Yaw_Target-yawInt);
+    }
+
+      if(K_And==0)
+      {
+          K_And_vertical=9999999;
+      }
+      else
+      {
+      K_And_vertical=(double)-1/K_And;
+      }
+      if(K_Target==0)
+      {
+          K_Target_vertical=9999999;
+      }
+      else
+      {
+      K_Target_vertical=(double)-1/K_Target;
+      }
+      P_Middle.X=(double)(P_Target.X+P_Now.X)/2;
+      P_Middle.Y=(double)(P_Target.Y+P_Now.Y)/2;
+
+      P_Centre.X=(double)(P_Target.Y-P_Middle.Y+K_And_vertical*P_Middle.X-K_Target_vertical*P_Target.X)/(K_And_vertical-K_Target_vertical);
+      if(P_Centre.X==P_Target.X)
+          P_Centre.Y=K_And_vertical*(P_Centre.X-P_Middle.X)+P_Middle.Y;
+      else
+         P_Centre.Y=K_Target_vertical*(P_Centre.X-P_Target.X)+P_Target.Y;
+      Radius_turn_sq=(P_Target.X-P_Centre.X)*(P_Target.X-P_Centre.X)+(P_Target.Y-P_Centre.Y)*(P_Target.Y-P_Centre.Y);
+    return Radius_turn_sq;
+}
+/***************************************   转弯方向控制函数       **************************************************/
+double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Position P_Now,double Radius_turn_sq)
+{
+    //double Radius_turn_sq;
+    //double K_And;                        //弦，斜率
+    double Distance_NowToTar_sq;         // 当前点到目标点距离的平方
+    double Distance_NowToRad_sq;         // 当前点到圆心的距离的平方
+    double Angle ;                       // 返回给PID的参考值
+    Position Circle_Point;              //
+    double delta_angle=0;//角度的偏差
+
+    //if(P_Target.X!=P_Now.X)
+    //K_And=(double)(P_Target.Y-P_Now.Y)/(P_Target.X-P_Now.X);
+
+    //Radius_turn_sq=(P_Target.X-P_Centre.X)*(P_Target.X-P_Centre.X)+(P_Target.Y-P_Centre.Y)*(P_Target.Y-P_Centre.Y);
+    Distance_NowToTar_sq=(P_Now.X-P_Target.X)*(P_Now.X-P_Target.X)+(P_Now.Y-P_Target.Y)*(P_Now.Y-P_Target.Y);
+    Distance_NowToRad_sq=(P_Now.X-P_Centre.X)*(P_Now.X-P_Centre.X)+(P_Now.Y-P_Centre.Y)*(P_Now.Y-P_Centre.Y);
+    //Circle_Point.X= P_Now.X;
+    //Circle_Point.Y= sqrt(Radius_turn_sq-(Circle_Point.X-P_Centre.X)*(Circle_Point.X-P_Centre.X))+P_Centre.Y;
+    //if(P_Now > P_Centre.Y)
+    //Angle=Circle_Point.Y-P_Now.Y;
+
+    //Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
+    Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
+    if(Distance_NowToTar_sq<=0.025)//到达目标点，精度为30cm
+    {
+       turn_flag=false;
+       num++;
+    }
+    delta_angle=yawTarget-yaw;
+            if(delta_angle>180)
+            {
+                delta_angle=delta_angle-360;
+            }else if(delta_angle>=(-180))
+            {
+                delta_angle=delta_angle;
+            }else
+            {
+                delta_angle=delta_angle+360;
+            }
+    if(Angle>0)               //朝外
+    {
+        if(delta_angle<0)
+            return (-Angle);
+        else
+            return 0;
+    }else
+    {
+        if(delta_angle<0)
+             return 0;
+        else
+            return (-Angle);
+    }
+    return Angle;
+
+
+}
+/***************************************   角度转换函数      **************************************************/
+double Datashare::angle_tran (double Yaw_Target,double Yaw)
+{
+    double angle_out;
+    double delta_angle;
+
+    delta_angle=Yaw_Target-Yaw;
+    if(delta_angle>180)
+    {
+        angle_out=delta_angle-360;
+    }else if(delta_angle>=(-180))
+    {
+        angle_out=angle_out;
+    }else
+    {
+        angle_out=delta_angle+360;
+    }
+   return angle_out;
+}
+/***************************************   走函数      **************************************************/
+double Datashare::Go (Position P_Target )
+{
+   double Dis_NowToTar=0;
+   //int circle_N=0;
+   double R=0;
+  Dis_NowToTar=(AGVLocation.X-P_Target.X)*(AGVLocation.X-P_Target.X)+(AGVLocation.Y-P_Target.Y)*(AGVLocation.Y-P_Target.Y);
+  if(Dis_NowToTar<0.025)
+  {
+      if(!turn_flag)
+      {
+      yawTarget+=90;
+      if(yawTarget>360)
+          yawTarget-=360;
+     // circle_N=yawTarget/360;
+     // yawTarget=yawTarget-circle_N*360;
+      //R=Position_Turn2 (AGVLocation,P_Target,yawTarget);
+      turn_flag=true;
+      //num++;
+      }
+  }
+  return Dis_NowToTar;
+}
 /****************************************              ************************************************/
-float Datashare::angle_trans(unsigned char low, unsigned char high)
+double Datashare::angle_trans(unsigned char low, unsigned char high)
 {
   int temp=high*256+low;
   if((temp<=32767)&(temp>=0))
