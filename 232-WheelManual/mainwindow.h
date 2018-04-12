@@ -27,7 +27,11 @@ public:
     void wheelZeroCalibration(void);                                                    //calibrate the steering wheel to zero
 
 
+
 private slots:
+
+    void ReadData ();
+
     void on_forwardButton_pressed();
 
     void on_forwardButton_released();
@@ -110,6 +114,8 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+
+    QTcpSocket *tcpSocket;
 };
 
 #endif // MAINWINDOW_H

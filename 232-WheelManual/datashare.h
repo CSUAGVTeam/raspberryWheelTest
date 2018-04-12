@@ -6,6 +6,9 @@
 #include<sys/stat.h>  
 #include<fcntl.h>  
 #include<termios.h>  
+
+#include <QTcpSocket>
+
 #define deltT 0.05                             //time unit
 
 class Datashare : public QObject
@@ -27,6 +30,10 @@ public:
     char seri_send_buzzer2[7]={0x01,0x51,0x02,0x00,0x1c,0x4e,0x02};			//alarm		扬声器报警报文
     char seri_send_buzzer3[7]={0x01,0x51,0x03,0x00,0x1c,0x4f,0x02};			//bar		扬声器警告报文
 
+    int Angle_QRtoCar=0;                                                    //车身与二维码的夹角
+    int QR_Code_Number=-999;                                                //二维码对应的编号
+    double Dis_Cen_Two=0;                                                   //扫码枪与车中心的偏差距离；
+
     int state_input[2][16];													//I/O口读取外部信息
     int state_output[16];													//I/O输出控制
 
@@ -42,13 +49,12 @@ public:
     char write0RPM[14];								//舵机停车，0速报文存放地址																							
     char commanData[14];							//舵机写速度报文存放数组
     char commanDataReverse[14];						//舵机反响写速度报文存放数组
-    double AGVSpeed;									//AGV速度
-    //double AGVSpeedX=0;                              //AGV X axis speed
-    //double AGVSpeedY = 0;                            //AGV Y axis speed
-    //double AGVLocationX = 0;                         //AGV X axis location
-    //double AGVLocationY = 0;                         //AGV Y axis location
-    int num=0;
-    double delta_s;
+    double AGVSpeed;							    //AGV速度
+    int num=0;                                      //path number
+    //QTcpSocket *tcpSocket;                          //二维码TCP/IP通信套接字
+    QString buf=NULL;                               //二维码解读信息存储字符串
+    QString buf_last=NULL;                       //上次二维码信息
+    double delta_s;                                 //path planning deviation
     double getSpeedString;							//放弃不用
     double wheelMoveSpeedSet;						//舵机设定速度
     double wheelMoveSpeedSetMax;						//舵机设定速度上限
@@ -59,8 +65,8 @@ public:
     double wheelAngle4=0;
     double wheelFrontAngle;
     double wheelRearAngle;
-	int wheelFrontAngleOffset;						//舵机前轮偏移量
-    int wheelRearAngleOffset;						//舵机后轮偏移量
+    double wheelFrontAngleOffset;						//舵机前轮偏移量
+    double wheelRearAngleOffset;						//舵机后轮偏移量
     unsigned int accum;								//CRC校验
     unsigned int Gr1;								//CRC校验
     int wheelAddress;								//舵机地址选择
@@ -94,9 +100,14 @@ public:
     bool sickC = 1;
     bool systemOnFlag = true;
 
-    double KP=31.0;                                        //PID coefficient
+    double KP = 5.0;                                        //PID coefficient
     double KI = 0;
-    double KD = 91.0;
+    double KD = 1250.0;
+
+    double KP_Angle = 1.0;                                        //PID coefficient
+    double KI_Angle = 0;
+    double KD_Angle = 0.2;
+
 
     double KP_turn=60.0;
     double KI_turn=0;
@@ -108,6 +119,7 @@ public:
     double yawInt = 0;
 
 	bool yawFlag = false;
+    bool QR_Flag = false;
 
     struct Position
     {
@@ -119,13 +131,28 @@ public:
         double X;
         double Y;
     };
+    struct Curve_Planning
+    {
+        double X_Start;
+        double Y_Start;
+        double X_Center;
+        double Y_Center;
+        double Radius;
+    };
      Position AGVLocation={0,0};
      Position P_Centre={0,0};
-     Position P_Target[4][2]={{{0,0.10},{3,0.10}},
-                              {{3,2},{3,3}},
-                              {{1,5},{0,5}},
-                              {{-2,3},{-2,2}}};
-
+     Position P_Target[4][2]={{{0,0},{0,1}},
+                              {{-2,3},{-3,3}},
+                              {{-5,1},{-5,0}},
+                              {{-3,-2},{-2,-2}}};
+     Position P_Target2[100]={{0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},{0,8},{0,9},
+                              {0,10},{0,11},{0,12},{0,13},{0,14},{0,15},{0,16},{0,17},{0,18},{0,19},
+                              {0,20},{0,21},{0,22},{0,23},{0,24},{0,25},{0,26},{0,27},{0,28},{0,29},
+                              {0,30},{0,31},{0,32},{0,33},{0,34},{0,35},{0,36},{0,37},{0,38},{0,39}};//路径坐标
+     Position P_Target3[100]={{0,1000}};//弯道坐标
+     Curve_Planning P_Curve[100]={{0,1,-2,3,2}};//********************************
+     Position Image_Center={600,800};                                            //图像中心点像素坐标
+     Position QR_Point[5]={{0,0},{0,0},{0,0},{0,0},{0,0}};                   //二维码5个点在图像上的位置
      Speed AGVSpeeds={0,0};
      unsigned char accessData[12];						//报文存放数组
      unsigned char enableData[12];
@@ -141,6 +168,14 @@ public:
      QString testStr;
 
 public:
+
+    double Go2 (Position P_Target );
+
+    double Information_Corrective();
+
+    bool Two_bar_codes_Pro2(QString information);
+
+    bool Two_bar_codes_Pro(QString information);
 
     double Position_PID2 (double delta,bool flag);
 

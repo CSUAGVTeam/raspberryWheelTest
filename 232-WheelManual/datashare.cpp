@@ -24,6 +24,8 @@
 #include <QCoreApplication>
 #include <QObject>
 
+
+
 Datashare::Datashare(QObject *parent) : QObject(parent)
 {
     if(wiringPiSetup()==-1)										//wiringPi启动
@@ -814,7 +816,7 @@ void Datashare::checkIO()
         wheelAngle=-Pwm;
     }
     **/
-    wheelAngle = Position_PID2 (delta_s,turn_flag);
+    wheelAngle = Position_PID2 (delta_s,turn_flag)+Position_PID(yaw, yawTarget);;
     writeWheelPosition(00,-wheelAngle + wheelFrontAngleOffset);
     write(fd2,writePositionData,sizeof(writePositionData));read(fd2,array,sizeof(array));
     writeWheelPosition(00,wheelAngle + wheelRearAngleOffset);
@@ -1244,11 +1246,197 @@ int Datashare::Position_PID (int Encoder,int Target)
      Integral_bias+=Bias;	                                 //Çó³öÆ«²îµÄ»ý·Ö
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
-     Pwm=KP*Bias+KI*Integral_bias+KD*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+     Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
      Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
      if (Pwm>45) Pwm = 45;
      if (Pwm<-45) Pwm = -45;
      return Pwm;                                           //ÔöÁ¿Êä³ö
+}
+
+/***************************************   QR code information processinng  *********************************/
+bool Datashare::Two_bar_codes_Pro(QString information)
+{
+    int Int_out[20]={0};//输出转化为数字
+    int blank[20]={0};//字符串中的空字符所在的位置；
+    int i=0,j=0;//只作为循环的变量；--可以随意使用
+    int k=0,t=0;//记录数据个数的大小（当前的下标）--不可随意更改
+    bool Cut_Chars=false;//空字符的标志
+    int m=0,n=0;//当前解读数据的大小
+    bool QR_Scan_Flag=false;
+    char *Inf;
+
+    //QByteArray ba=information.toLatin1();
+    //Inf=ba.data();
+    for(i=0;;i++)
+    {
+        if(Inf[i]==' ')
+        {
+            blank[k]=i;
+            k++;
+        }
+        if(Inf[i]=='\0')
+        {
+            break;
+        }
+    }
+    for( i=0;;i++)
+    {
+        Inf[i]=Inf[i]-'0';
+        if(Inf[i]=='\0')
+        {
+            t=i;
+            break;
+        }
+    }
+    for( i=0;i<t;i++)
+    {
+        n=0;
+        Cut_Chars=false;
+        char data[10]={0};
+        for(j=0;j<=k;j++)
+        {
+            if(i==blank[j])
+            {
+                Cut_Chars=true;
+                //n=0;
+                break;
+            }
+        }
+        if(Cut_Chars==false)
+        {
+            data[n]=Inf[i];
+            n++;
+        }
+        else
+        {
+            for(i=0;i<n;i++)
+            {
+               Int_out[m]+=data[i]*(int)pow(10,(n-i-1));
+            }
+            m++;
+        }
+    }
+    for(i=0;i<m;i++)
+    {
+        if(i=0)
+        {
+            QR_Code_Number=Int_out[i];
+        }
+        else
+        {
+            if(m-i>1)
+            {
+                QR_Point[i/2].X=Int_out[i];
+                QR_Point[i/2-1].Y=Int_out[i];
+            }
+            else
+            {
+                Angle_QRtoCar=Int_out[i];
+            }
+        }
+    }
+    QR_Scan_Flag=true;
+    return QR_Scan_Flag;
+}
+/***************************************  二维码读取信息转换   ***********************************************/
+bool Datashare::Two_bar_codes_Pro2(QString information)
+{
+    bool QR_Scan_Flag=false;
+
+    QStringList Part_Inf=information.split(" ");
+    QString a1=Part_Inf[0];       QString a7=Part_Inf[6];
+    QString a2=Part_Inf[1];       QString a8=Part_Inf[7];
+    QString a3=Part_Inf[2];       QString a9=Part_Inf[8];
+    QString a4=Part_Inf[3];       QString a10=Part_Inf[9];
+    QString a5=Part_Inf[4];       QString a11=Part_Inf[10];
+    QString a6=Part_Inf[5];       QString a12=Part_Inf[11];
+
+    QR_Code_Number = a1.toInt();    QR_Point[2].Y = a7.toInt();
+    QR_Point[0].X = a2.toInt();     QR_Point[3].X = a8.toInt();
+    QR_Point[0].Y = a3.toInt();     QR_Point[3].Y = a9.toInt();
+    QR_Point[1].X = a4.toInt();     QR_Point[4].X = a10.toInt();
+    QR_Point[1].Y = a5.toInt();     QR_Point[4].Y = a11.toInt();
+    QR_Point[2].X = a6.toInt();     Angle_QRtoCar = a12.toInt();
+    QR_Scan_Flag=true;
+    return QR_Scan_Flag;
+}
+/***************************************  二维码信息进行位置，角度矫正处理   ***********************************************/
+double Datashare::Information_Corrective()
+{
+    static int Target_Location_Last=-1;  //上次的位置标号
+    int Target_Location=0;               //位置标号
+    int Target_Number=0;                 //序列号
+    double Side_Twocode=0;               //二维码图像边长
+    double Angle_Error=0;                //角度偏差
+    double N_YawInt=0;                   //坐标系正方向修正角度
+    Position Image_Error={0,0};                   //图像上二维码中心到图像中心的像素点偏差
+    Position Error_Position[4]={{-0.0155,-0.0155},{0.0155,-0.0155},{-0.0155,0.0155},{0.0155,0.0155}};//此处的值是根据所贴二维码大小及之间位置决定
+
+    Target_Location=(QR_Code_Number-1)/4;
+    Target_Number=(QR_Code_Number-1)%4;
+
+    Image_Error.X=Image_Center.X-QR_Point[4].X;
+    Image_Error.Y=Image_Center.Y-QR_Point[4].Y;
+
+    /****此处加像素坐标差转换为实际位置坐标差 *******/
+
+    Side_Twocode=sqrt((QR_Point[0].X-QR_Point[1].X)*(QR_Point[0].X-QR_Point[1].X)+(QR_Point[0].Y-QR_Point[1].Y)*(QR_Point[0].Y-QR_Point[1].Y));
+    Image_Error.X=Image_Error.X*(double)(0.026/Side_Twocode);//实际大小与图像倍数关系
+    Image_Error.Y=Image_Error.Y*(double)(0.026/Side_Twocode);
+    Error_Position[Target_Number].X-=Image_Error.X;
+    Error_Position[Target_Number].Y+=Image_Error.Y;
+
+    AGVLocation.X = P_Target2[Target_Location].X+Error_Position[Target_Number].X;
+    AGVLocation.Y = P_Target2[Target_Location].Y+Error_Position[Target_Number].Y;
+/*角度*/
+
+    if(Angle_QRtoCar<=180)
+    {
+        Angle_Error = Angle_QRtoCar;
+    }
+    else
+    {
+        Angle_Error = Angle_QRtoCar-360;
+    }
+
+    if(Target_Location==0)
+    {
+        yawInt = yaw-90-Angle_Error;
+        if(yawInt<0)
+            yawInt+=360;
+        if(yawInt>360)
+            yawInt-=360;
+    }
+    else
+    {
+        N_YawInt = yaw-90-Angle_Error;
+        if(N_YawInt<0)
+            N_YawInt += 360;
+        if(yaw-90-Angle_Error>360)
+            N_YawInt -= 360;
+        yawInt = double(yawInt+N_YawInt)/2;
+
+    }
+    /***
+    else
+    {
+        yawInt = (double)(yawInt+yaw-90-Angle_Error)/2;
+        if(yawInt<0)
+            yawInt+=360;
+        if(yawInt>360)
+            yawInt-=360;
+    }
+    ***/
+    //if(Target_Location!=Target_Location_Last)
+    {
+        yawTarget = yaw - Angle_Error;
+        if(yawTarget<0)
+            yawTarget+=360;
+        if(yawTarget>360)
+            yawTarget-=360;
+        Target_Location_Last=Target_Location;
+    }
+    return 0;
 }
 /***************************************   新版PID         **************************************************/
 double Datashare::Position_PID2 (double delta,bool flag)
@@ -1256,27 +1444,34 @@ double Datashare::Position_PID2 (double delta,bool flag)
      double Pwm=0;
      static double Last_delta=0,Integral_delta=0;
      static double Last_delta_turn=0,Integral_delta_turn=0;
+     double KP_Line;
 
 
      if(flag==false)
      {
+         KP_Line=(delta*delta)*6500+KP;
          Integral_delta+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
          if(Integral_delta>120)
              Integral_delta=120;
          if(Integral_delta<-120)
              Integral_delta=-120;
-         Pwm=KP*delta+KI*Integral_delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         //Pwm=KP_Line*delta+KI*Integral_delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Pwm=KP_Line*delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Last_delta=delta;
+         Last_delta_turn=0;
      }
      else
      {
+         KP_Line=(delta*delta)*KI_turn+KP_turn;
          Integral_delta_turn+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
          if(Integral_delta_turn>300)
              Integral_delta_turn=300;
          if(Integral_delta_turn<-300)
              Integral_delta_turn=-300;
-         Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Last_delta_turn=delta;
+         Last_delta=0;
      }
      if (Pwm>45) Pwm = 45;
      if (Pwm<-45) Pwm = -45;
@@ -1309,15 +1504,47 @@ double Datashare::Straight_Line (Position P_Now,Position P_Start,Position P_Targ
     delta_y=P_Target.Y-P_Now.Y;
     if(abs(P_Target.X-P_Start.X)>=abs(P_Target.Y-P_Start.Y))
     {
-        K_str=(double)(P_Target.Y-P_Start.Y)/(P_Target.X-P_Start.X);
-        out=P_Target.Y-delta_x*K_str;
-        return (out-P_Now.Y);
+        if(abs(P_Target.Y-P_Start.Y)<=0.00001)
+        {
+           if(P_Target.X-P_Start.X>0)
+           {
+               out=P_Target.Y;
+               return (out-P_Now.Y);
+           }
+           else
+           {
+               out=P_Target.Y;
+               return (P_Now.Y-out);
+           }
+        }
+        else
+        {
+            K_str=(double)(P_Target.Y-P_Start.Y)/(P_Target.X-P_Start.X);
+            out=P_Target.Y-delta_x*K_str;
+            return (out-P_Now.Y);
+        }
     }
     else
     {
+        if(abs(P_Target.X-P_Start.X)<=0.00001)
+        {
+            if(P_Target.Y-P_Start.Y>0)
+            {
+                out=P_Target.X;
+                return (P_Now.X-out);
+            }
+            else
+            {
+                out=P_Target.X;
+                return (out-P_Now.X);
+            }
+        }
+        else
+        {
         K_str=(double)(P_Target.X-P_Start.X)/(P_Target.Y-P_Start.Y);
         out=P_Target.X-delta_y*K_str;
         return (out-P_Now.X);
+        }
     }
 
 }
@@ -1401,10 +1628,10 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
 
     //Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
     Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
-    if(Distance_NowToTar_sq<=0.025)//到达目标点，精度为30cm
+    if(Distance_NowToTar_sq<=0.0025)//到达目标点，精度为30cm
     {
        turn_flag=false;
-       num++;
+       //num++;
     }
     delta_angle=yawTarget-yaw;
             if(delta_angle>180)
@@ -1460,7 +1687,7 @@ double Datashare::Go (Position P_Target )
    //int circle_N=0;
    double R=0;
   Dis_NowToTar=(AGVLocation.X-P_Target.X)*(AGVLocation.X-P_Target.X)+(AGVLocation.Y-P_Target.Y)*(AGVLocation.Y-P_Target.Y);
-  if(Dis_NowToTar<0.025)
+  if(Dis_NowToTar<0.0025)
   {
       if(!turn_flag)
       {
@@ -1473,6 +1700,47 @@ double Datashare::Go (Position P_Target )
       turn_flag=true;
       //num++;
       }
+  }
+  return Dis_NowToTar;
+}
+/***************************************   走函数(加直线)      **************************************************/
+double Datashare::Go2 (Position P_Target )
+{
+   double Dis_NowToTar=0;
+   //int circle_N=0;
+   double R=0;
+   bool Straight_Bend = false;
+
+  Dis_NowToTar=(AGVLocation.X-P_Target.X)*(AGVLocation.X-P_Target.X)+(AGVLocation.Y-P_Target.Y)*(AGVLocation.Y-P_Target.Y);
+  if(Dis_NowToTar<0.0025)
+  {
+          //num++;
+          for(int i=0;i<=num;i++)
+          {
+              if(P_Target2[num].X==P_Target3[i].X)
+              {
+                  if(P_Target2[num].Y==P_Target3[i].Y)
+                  {
+                      Straight_Bend =true;
+                      break;
+                  }
+              }
+          }
+          if(Straight_Bend==true)
+          {
+              yawTarget+=90;//此处要优化
+              if(yawTarget>360)
+                 yawTarget-=360;
+              if(yawTarget<0)
+                  yawTarget+=360;
+              turn_flag=true;
+          }
+          else
+          {
+              turn_flag=false;
+          }
+          num++;
+
   }
   return Dis_NowToTar;
 }
