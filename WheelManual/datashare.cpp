@@ -2363,4 +2363,43 @@ void Datashare::Speed_Adj(void)
 
 /*****************************************              ************************************************/
 
-
+/***********************        自动生成路径坐标函数        *****************************/
+int Datashare::Trace(int x1,int y1,int x2,int y2, int init )
+{
+    int num_cor;
+    int plus_dec;
+    if (x1 == x2)
+    {
+        num_cor = abs(y1 -y2);
+        P_Target2[init-1].X = x1;
+        P_Target2[init-1].Y = y1;
+        P_Target2[init-1+num_cor].X = x2;
+        P_Target2[init-1+num_cor].Y = y2;
+        if (y2 > y1)
+            plus_dec = 1;
+        else plus_dec = -1;
+        for (int i = init; i <init-1+ num_cor; i++)
+        {
+            P_Target2[i].X = x1;
+            P_Target2[i].Y = y1 + plus_dec*(i-init+1);
+        }
+    }
+    if (y1 == y2)
+    {
+        num_cor = abs(x1 - x2);
+        P_Target2[init-1].X = x1;
+        P_Target2[init-1].Y = y1;
+        P_Target2[init-1+num_cor].X = x2;
+        P_Target2[init-1+num_cor].Y = y2;
+        if (x2 > x1)
+            plus_dec = 1;
+        else plus_dec = -1;
+        for (int i = init; i < init-1+num_cor; i++)
+        {
+            P_Target2[i].X = x1 + plus_dec*(i-init+1);
+            P_Target2[i].Y = y1 ;
+        }
+    }
+    init = init + num_cor+1;
+    return init;
+}

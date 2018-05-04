@@ -80,7 +80,7 @@ void MainWindow::initialTheSystem(void)
                 wheelZeroCalibration();                  //find the zero point of the steering wheel
             }
         }
-    writeWifi();
+    //writeWifi();
     systemOn();
 }
 
@@ -151,6 +151,7 @@ void MainWindow::systemOn(void)
         if(mptr.breakFlag == false)
         {
                 mptr.readIO();                          //读取数据，IO、舵机等,检查IO数据，输出对应IO数据
+               // writeWifi();
                /* mptr.wheelMoveSpeedSet = speedTemp;//重新设定速度
 
                 if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
@@ -181,11 +182,11 @@ void MainWindow::systemOn(void)
 //                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.num).arg(mptr.wheelAngle));
                 //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.QR_Code_Number).arg(mptr.Angle_QRtoCar));
 //                ui->read->append(tr("%1\t%2").arg(mptr.turn_flag).arg(mptr.direction_flag));
-                ui->CommunicationEdit->append(tr("%1").arg(mptr.bufWifi));
-                for(int i =0; i<mptr.numberOfStaEnd; i++)
-                {
-                    ui->CommunicationEdit->append((tr("%1\t%2").arg(mptr.start_end[i].X).arg(mptr.start_end[i].Y)));
-                }
+//                ui->CommunicationEdit->append(tr("%1").arg(mptr.bufWifi));
+//                for(int i =0; i<mptr.numberOfStaEnd; i++)
+//                {
+//                    ui->CommunicationEdit->append((tr("%1\t%2").arg(mptr.start_end[i].X).arg(mptr.start_end[i].Y)));
+//                }
 
                 //ui->read->append(tr("%1\t").arg(mptr.turn_flag));
                 //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.QR_Point[0].X).arg(mptr.QR_Point[0].Y));
@@ -410,6 +411,9 @@ void MainWindow::ReadData ()
 /**********************     读取wifi   *********************************/
 void MainWindow::readWifi()
 {
+    int init=1;         //初值
+    int target_angel=0;
+    int u,v;
     static QString bufTemp;
     int lengthall =0;
     QString temp;
@@ -450,7 +454,54 @@ void MainWindow::readWifi()
                 temp=buffer.split(":")[5+4*i];
                 mptr.start_end[2*i+1].Y=temp.toInt();
             }
-            mptr.numberOfStaEnd = (mptr.numberOfStaEnd-2)/2;
+            mptr.numberOfStaEnd = (mptr.numberOfStaEnd-2)/2;//起点终点的数量
+            for(int i=0; i<mptr.numberOfStaEnd/2; i++)
+            {
+                init = mptr.Trace(mptr.start_end[2*i].X, mptr.start_end[2*i].Y, mptr.start_end[2*i+1].X, mptr.start_end[2*i+1].Y,init);
+            }
+            for(int i =0; i<init-1; i++)              //显示
+            {
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Target2[i].X).arg(mptr.P_Target2[i].Y));
+            }
+
+            for(int i=1; i<mptr.numberOfStaEnd-2; i+=2)
+            {
+                if(mptr.start_end[i+1].X== mptr.start_end[i+2].X)                   //计算圆心角
+                {
+                    if(mptr.start_end[i+2].Y> mptr.start_end[i+1].Y)
+                        target_angel=90;
+                    else target_angel=270;
+                }
+                if(mptr.start_end[i+1].Y==mptr.start_end[i+2].Y)
+                {
+                    if(mptr.start_end[i+2].X>mptr.start_end[i+1].X)
+                        target_angel=0;
+                    else target_angel=180;
+                }
+                u=0, v=0;//定义转弯向量（0,2）经旋转的向量
+                if(cos(target_angel*pi/180)<1.1&&cos(target_angel*pi/180)>0.9)
+                    u = 2*1;
+                if(cos(target_angel*pi/180)<0.1&&cos(target_angel*pi/180)>-0.1)
+                    u = 2*0;
+                if(cos(target_angel*pi/180)<-0.9&&cos(target_angel*pi/180)>-1.1)
+                    u = 2*(-1);
+                if(sin(target_angel*pi/180)<1.1&&sin(target_angel*pi/180)>0.9)
+                    v = 2*1;
+                if(sin(target_angel*pi/180)<0.1&&sin(target_angel*pi/180)>-0.1)
+                    v = 2*0;
+                if(sin(target_angel*pi/180)<-0.9&&sin(target_angel*pi/180)>-1.1)
+                    v = 2*(-1);
+               // u = 2*cos(target_angel*pi/180);
+                //v = 2*sin(target_angel*pi/180);
+
+                center_x？？？？？？？？ = start_end[i-1].X + u;//计算转弯圆心
+                center_y ？？？？？？？？？？？？？？？？= start_end[i-1].Y + v;
+
+            }
+
+
+
+
         }
     }
         //tcpSocket 清除缓冲区

@@ -183,6 +183,11 @@ public:
         double X;
         double Y;
     };
+    struct PositionStaEnd
+    {
+        int X;
+        int Y;
+    };
     struct Vector
     {
         double X;
@@ -231,13 +236,15 @@ public:
 
      Position P_Target3[100]={{0,2},{-6,4},{-8,7}};//弯道坐标(正向入弯点) test
      Position P_Target4[100]={{-6,9},{-8,6},{-2,4}};//弯道坐标（正向出弯点）
-
+/*
      Position P_Target2[100]={{0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},{0,8},{0,9},
                               {0,10},{0,11},{0,12},{0,13},{0,14},{0,15},{0,16},{0,17},{0,18},{0,19},
                               {0,20},{0,21},{0,22},{0,23},{0,24},{0,25},{0,26},{0,27},{0,28},{0,29},
                               {0,30},{0,31},{0,32},{0,33},{0,34},{0,35},{0,36},{0,37},{0,38},{0,39}};//路径坐标
+ */
+     Position P_Target2[100]={{0,0}};
      Position P_Stop = {0,5}; //停车点
-     Position start_end[100] = {};
+     PositionStaEnd start_end[100] = {{0,0}};
      //Position P_Target3[100]={{0,1000}};//弯道坐标
      Curve_Planning P_Curve[100]={{0,1,-2,3,2}};//********************************
      Position Image_Center={800,600};                                            //图像中心点像素坐标
@@ -348,6 +355,7 @@ public:
     //速度设定
     void Speed_Adj(void);
 
+    int Trace(int x1,int y1,int x2,int y2, int init );  //自动生成路径坐标函数
 signals:
 
     void timingbeginSignal();
