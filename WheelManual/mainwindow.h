@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include "datashare.h"
+#define pi 3.14159
 
 namespace Ui {
 class MainWindow;
@@ -16,6 +17,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     Datashare mptr;
+
+
 
 public:
                                                                                         //read I/O and save the data
@@ -33,6 +36,10 @@ private slots:
     void ReadData ();
 
     void readWifi();
+
+    void reconnect();
+
+    void TCPconnected();
 
     void on_forwardButton_pressed();
 
@@ -113,6 +120,8 @@ private slots:
     void on_label_3_linkActivated(const QString &link);
 
     void on_kdSpinBox_editingFinished();
+
+    void on_reconnectButton_clicked();
 
 private:
     Ui::MainWindow *ui;

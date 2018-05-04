@@ -18,6 +18,7 @@
 #include <QByteArray>
 #include <QSpinBox>
 #include <QDataStream>
+#include <math.h>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -44,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent) :
     qint16 port1=6666;
     tcpSocket1->connectToHost(ip1,port1);
     connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
+    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
+    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
 /*****************   UI界面的初始设计  ******************/
     ui->speedEdit->setText(c1.setNum(mptr.wheelMoveSpeedSet));
     ui->addressEdit->setText(c1.setNum(mptr.wheelAddress));
@@ -408,6 +411,31 @@ void MainWindow::ReadData ()
 
 }
 
+/**********************    断开重新连接上位机   ***********************/
+void MainWindow::reconnect()
+{
+    mptr.TCPconnectFlag = false;
+
+    tcpSocket1 = new QTcpSocket(this);
+    QString ip1= "10.0.0.2"; //"192.168.10.12";
+    //QString ip="192.168.10.11";
+    //QString ip="10.0.0.3";
+    qint16 port1=6666;
+    tcpSocket1->connectToHost(ip1,port1);
+    connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
+    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
+    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
+
+    ui->TCPStatusLabel->setText("上位机连接失败，手动重连");
+
+}
+
+void MainWindow::TCPconnected()
+{
+    mptr.TCPconnectFlag = true;
+    ui->TCPStatusLabel->setText("上位机连接成功");
+}
+
 /**********************     读取wifi   *********************************/
 void MainWindow::readWifi()
 {
@@ -493,14 +521,13 @@ void MainWindow::readWifi()
                     v = 2*(-1);
                // u = 2*cos(target_angel*pi/180);
                 //v = 2*sin(target_angel*pi/180);
+                mptr.turnCenter[(i+1)/2].X = mptr.start_end[i-1].X + u;
+                mptr.turnCenter[(i+1)/2].Y = mptr.start_end[i-1].Y + u;
 
-                center_x？？？？？？？？ = start_end[i-1].X + u;//计算转弯圆心
-                center_y ？？？？？？？？？？？？？？？？= start_end[i-1].Y + v;
+//                center_x？？？？？？？？ = start_end[i-1].X + u;//计算转弯圆心
+//                center_y ？？？？？？？？？？？？？？？？= start_end[i-1].Y + v;
 
             }
-
-
-
 
         }
     }
@@ -529,10 +556,15 @@ void MainWindow::writeWifi(void)
     ui->CommunicationEdit->append(intergrate);
 
     QByteArray message;
-    QDataStream out(&message,QIODevice::ReadWrite);
-    out.setVersion(QDataStream::Qt_5_0);
-    out<<intergrate;
+    message = intergrate.toLocal8Bit();
+
+//    QDataStream out(&message,QIODevice::ReadWrite);
+//    out.setVersion(QDataStream::Qt_5_0);
+//    out<<intergrate;
     tcpSocket1->write(message);
+
+
+
 //    tcpSocket1->write(intergrate);
 }
 /***********************前进按钮，按压前进，速度为设定值***************************************************************************************/
@@ -1440,4 +1472,17 @@ void MainWindow::on_label_3_linkActivated(const QString &link)
 void MainWindow::on_kdSpinBox_editingFinished()
 {
 
+}
+
+void MainWindow::on_reconnectButton_clicked()
+{
+    tcpSocket1 = new QTcpSocket(this);
+    QString ip1= "10.0.0.2"; //"192.168.10.12";
+    //QString ip="192.168.10.11";
+    //QString ip="10.0.0.3";
+    qint16 port1=6666;
+    tcpSocket1->connectToHost(ip1,port1);
+    connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
+    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
+    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
 }

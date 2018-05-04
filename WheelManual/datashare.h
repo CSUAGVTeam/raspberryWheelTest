@@ -112,6 +112,8 @@ public:
     bool reserve1,reserve2,reserve3,chargeContactorPickup,wheelMoveFrontBrake,wheelMoveBackBrake,conveyorForward,
         conveyorBack,conveyorBrake,liftFrontOn,liftBackOn,systemOnLight,alarmLight,warmingLight,batteryChargeCircuitOn,chargeStart,batteryChargeComplete;
 
+    bool TCPconnectFlag = 0;
+
     bool sickA = 1;
     bool sickB = 1;
     bool sickC = 1;
@@ -244,7 +246,8 @@ public:
  */
      Position P_Target2[100]={{0,0}};
      Position P_Stop = {0,5}; //停车点
-     PositionStaEnd start_end[100] = {{0,0}};
+     PositionStaEnd start_end[100] = {{0,0}};               //从TCP/IP信息中解出的首末点存放数组
+     PositionStaEnd turnCenter[100]={{0,0}};
      //Position P_Target3[100]={{0,1000}};//弯道坐标
      Curve_Planning P_Curve[100]={{0,1,-2,3,2}};//********************************
      Position Image_Center={800,600};                                            //图像中心点像素坐标

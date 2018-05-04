@@ -160,7 +160,7 @@ void Datashare::writeAccessToDrive(int address)      //  give up
 }
 
 /*************************生成桥使能报文（可以弃用了）*******************************************************************************************/
-void Datashare::enableBridge(int address)            //  give up
+void Datashare::enableBridge(int address)            //  弃用
 {
     enableData[0] = 0xa5;
     enableData[1] = address & 255;
@@ -195,7 +195,7 @@ void Datashare::enableBridge(int address)            //  give up
 }
 
 /***************************生成桥断连报文（可以弃用了）*****************************************************************************************/
-void Datashare::disableBridge(int address)           //  give up
+void Datashare::disableBridge(int address)           //  弃用
 {
     disableData[0] = 0xa5;
     disableData[1] = address & 255;
@@ -267,7 +267,7 @@ void Datashare::writeWheelCurrent(int inputArea, double currentAMPS)
 }
 
 /********************************生成读电流报文************************************************************************************/
-void Datashare::readWheelCurrent(int address)        // give up
+void Datashare::readWheelCurrent(int address)        // 弃用
 {
     readCurrentData[0] = 0xa5;
     readCurrentData[1] = address & 255;
@@ -289,7 +289,7 @@ void Datashare::readWheelCurrent(int address)        // give up
 }
 
 /*********************************生成写速度报文***********************************************************************************/
-void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //give up
+void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //弃用
 {
     int speed;
     speed = (int) (speedREV * 17801.1941*60);//4000 / 60 * 131072 / 20000 + 0.5;
@@ -325,7 +325,7 @@ void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //give 
 }
 
 /*****************************生成读速度报文***************************************************************************************/
-void Datashare::readWheelSpeed(int address)          // give up
+void Datashare::readWheelSpeed(int address)          // 弃用
 {
     readSpeedData[0] = 0xa5;
     readSpeedData[1] = address & 255;
@@ -405,7 +405,7 @@ void Datashare::writeWheelPosition(int inputArea, double positonANGLE)
 }
 
 /**********************************生成读取位置报文（可以弃用了）**********************************************************************************/
-void Datashare::readWheelPositon(int address)       //give up
+void Datashare::readWheelPositon(int address)       //弃用
 {
     readPositionData[0] = 0xa5;
     readPositionData[1] = address & 255;
@@ -449,7 +449,7 @@ double Datashare::convertTelegramHex2Angle(unsigned char array[])
 }
 
 /**********************************报文检验函数（可以弃用了）**********************************************************************************/
-QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
+QString Datashare::checkWheelCommunication(int filedestiny)//调试用
 {
     unsigned char array[50]={0};
     int numberOFRead;
