@@ -11,6 +11,7 @@
 
 #define deltT 0.05                             //time unit
 
+
 class Datashare : public QObject
 {
     Q_OBJECT
@@ -32,7 +33,7 @@ public:
 
     int Angle_QRtoCar=0;                                                    //车身与二维码的夹角
     int QR_Code_Number=-999;                                                //二维码对应的编号
-    double Dis_Cen_Two=0;                                                   //扫码枪与车中心的偏差距离；
+    //double Dis_Cen_Two=0;                                                   //扫码枪与车中心的偏差距离；
 
     int state_input[2][16];													//I/O口读取外部信息
     int state_output[16];													//I/O输出控制
@@ -46,13 +47,21 @@ public:
 
     unsigned char readInertialBuff[8]={0x04,0x03, 0x00, 0x04, 0x00, 0x04, 0x05, 0x9d};          //telegram for reading the navigation part
 
-    char write0RPM[14];								//舵机停车，0速报文存放地址																							
+    QString frontTelegram;
+    QString backTelegram;
+    char write0RPM[14];								//舵机停车，0速报文存放地址
     char commanData[14];							//舵机写速度报文存放数组
     char commanDataReverse[14];						//舵机反响写速度报文存放数组
     double AGVSpeed;							    //AGV速度
     int num=0;                                      //path number
+    //double Distance_QR_CarCenter=0.48;              //用不到了
     //QTcpSocket *tcpSocket;                          //二维码TCP/IP通信套接字
     QString buf=NULL;                               //二维码解读信息存储字符串
+    double a=0;                                      //直线位置PID输出量
+    double b=0;                                      //直线角度PID输出量
+    double yaw_error=0;                              //惯导飘移角度
+    int Num_Turn = 0;                                //转弯的数量（左加右减）
+
     QString buf_last=NULL;                       //上次二维码信息
     double delta_s;                                 //path planning deviation
     double getSpeedString;							//放弃不用
@@ -73,6 +82,8 @@ public:
     int delayTimeSet;								//延时数据
     
     bool turn_flag=false;
+    bool direction_flag=true;                       //方向标志位（正向为true，反向为false）
+    bool direction_flag_last=true;
     bool initialReady = false;                                          //check whether the system has iniitaled,true=ready,flase=not ready 初始化完成标志
     bool breakFlag = true;                                              //judge MainWindow::systemOn() loop whether to stop					手自切换标志
     bool calibrationFlag = false;					//舵机校零完成标志
@@ -100,9 +111,9 @@ public:
     bool sickC = 1;
     bool systemOnFlag = true;
 
-    double KP = 5.0;                                        //PID coefficient
+    double KP = 10.0;                                        //PID coefficient
     double KI = 0;
-    double KD = 1250.0;
+    double KD = 1250.0;//1250.0
 
     double KP_Angle = 1.0;                                        //PID coefficient
     double KI_Angle = 0;
@@ -117,6 +128,7 @@ public:
     double yawLast = 0;
     double yawTarget = 0;
     double yawInt = 0;
+    double yawTarget_Last=0;
 
 	bool yawFlag = false;
     bool QR_Flag = false;
@@ -125,6 +137,12 @@ public:
     {
         double X;
         double Y;
+    };
+    struct Vector
+    {
+        double X;
+        double Y;
+        double Z;
     };
     struct Speed
     {
@@ -141,17 +159,34 @@ public:
     };
      Position AGVLocation={0,0};
      Position P_Centre={0,0};
-     Position P_Target[4][2]={{{0,0},{0,1}},
-                              {{-2,3},{-3,3}},
-                              {{-5,1},{-5,0}},
-                              {{-3,-2},{-2,-2}}};
+
+     Position P_TwoCode[120]={{0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},{0,8},{0,9},
+                              {-1,9},{-2,9},{-3,9},{-4,9},{-5,9},{-6,9},{-7,9},{-8,9},{-8,8},{-8,7},
+                              {-8,6},{-8,5},{-8,4},{-8,3},{-8,2},{-8,1},{-8,0},{-7,0},{-6,0},{-5,0},
+                              {-4,0},{-3,0},{-2,0},{-1,0},{-8.049,7},{-8.098,7},{-7.951,7},{-8.049,7},{-6,0.049},{-6,0.098},
+                              {-6,-0.049},{-6,-0.098},{-0.049,2},{-0.091,2},{0.049,2},{0.091,2},{-2,8.951},{-2,9.049},{-2,8.902},{-2,9.098},
+                              {-0.049,7},{0.049,7},{-0.098,7},{0.098,7},{-2,0.049},{-2,-0.049},{-2,-0.098},{-2,0.098},{-7.951,2},{-8.049,2},
+                              {-7.902,2},{-8.098,2},{-6,8.951},{-6,8.902},{-6,9.049},{-6,9.098}};//二维码坐标位置
+     /**
+     Position P_Target[30] = { {0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},
+                               {-2,9},{-3,9},{-4,9},{-5,9},{-6,9},
+                               {-8,7},{-8,6},{-8,5},{-8,4},{-8,3},{-8,2},
+                               {-6,0},{-5,0},{-4,0},{-3,0},{-2,0},{0,2}};//路径坐标
+                               **/
+     Position P_Target[30] = { {0,0},{0,1},{0,2},{2,4},{3,4},{4,4},{5,5},{6,4}};//测试坐标
+     Position P_Target3[100]={{0,2}};//弯道坐标(正向入弯点)
+     Position P_Target4[100]={{2,4}};//弯道坐标（正向出弯点）
+     /**
+     Position P_Target3[100]={{0,7},{-6,9},{-8,2},{-2,0}};//弯道坐标(正向入弯点)
+     Position P_Target4[100]={{-2,9},{-8,7},{-6,0},{0,2}};//弯道坐标（正向出弯点）
+     **/
      Position P_Target2[100]={{0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},{0,8},{0,9},
                               {0,10},{0,11},{0,12},{0,13},{0,14},{0,15},{0,16},{0,17},{0,18},{0,19},
                               {0,20},{0,21},{0,22},{0,23},{0,24},{0,25},{0,26},{0,27},{0,28},{0,29},
                               {0,30},{0,31},{0,32},{0,33},{0,34},{0,35},{0,36},{0,37},{0,38},{0,39}};//路径坐标
-     Position P_Target3[100]={{0,1000}};//弯道坐标
+     //Position P_Target3[100]={{0,1000}};//弯道坐标
      Curve_Planning P_Curve[100]={{0,1,-2,3,2}};//********************************
-     Position Image_Center={600,800};                                            //图像中心点像素坐标
+     Position Image_Center={800,600};                                            //图像中心点像素坐标
      Position QR_Point[5]={{0,0},{0,0},{0,0},{0,0},{0,0}};                   //二维码5个点在图像上的位置
      Speed AGVSpeeds={0,0};
      unsigned char accessData[12];						//报文存放数组
@@ -249,7 +284,7 @@ public:
 
     int Incremental_PI (int Encoder,int Target);
 
-    int Position_PID (int Encoder,int Target);
+    double Position_PID (double Encoder,double Target);
 
     double angle_trans(unsigned char low, unsigned char high);
 

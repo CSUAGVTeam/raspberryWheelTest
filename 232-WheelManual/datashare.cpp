@@ -431,14 +431,15 @@ double Datashare::convertTelegramHex2Angle(unsigned char array[])
 {
     if (array[0]==0xa5 && array[1]==0xff)
     {
-        int HH, H, L, LL, position, positonANGLE;
+        int HH, H, L, LL, position;
+        double  positonANGLE;
         HH = (int)(array[11]);
         H = (int)(array[10]);
         L = (int)(array[9]);
         LL = (int)(array[8]);
         position = LL + L * 256 + H * 65536 + HH * 16777216;
-        positonANGLE = position /100.794; //315 / 32512;
-        return (double)positonANGLE;
+        positonANGLE = (double)position / 103.2127; //100.794 ???; //315 / 32512;
+        return positonANGLE;
     }
     else
     {
@@ -668,16 +669,34 @@ void Datashare::readIO()
     // memset(array,0,14*sizeof(unsigned char));
      write(fd2,readPositionData,sizeof(readPositionData));//fflush(stdout);
      numberOfRead = read(fd2,array2,sizeof(array2));
+     frontTelegram.clear();
+     for(int i=0;i<numberOfRead;i++)
+     {
+         if(array2[i]<16)
+             frontTelegram += '0' + QString::number(array2[i],16).toUpper();
+         else
+             frontTelegram += QString::number(array2[i],16).toUpper();
+     }
      wheelFrontAngle = convertTelegramHex2Angle(array2) - wheelFrontAngleOffset;
 
     // memset(array,0,14*sizeof(unsigned char));
      write(fd4,readPositionData,sizeof(readPositionData));//fflush(stdout);
      numberOfRead = read(fd4,array4,sizeof(array4));
+     backTelegram.clear();
+     for(int i=0;i<numberOfRead;i++)
+     {
+         if(array4[i]<16)
+             backTelegram += '0' + QString::number(array4[i],16).toUpper();
+         else
+             backTelegram += QString::number(array4[i],16).toUpper();
+     }
      wheelRearAngle = convertTelegramHex2Angle(array4) - wheelRearAngleOffset;
 
+     /**
      AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2 * cos((wheelFrontAngle+wheelRearAngle)/2*3.14159/180);
      AGVSpeeds.X=AGVSpeed*cos((yaw-yawInt)*3.14159/180);
      AGVSpeeds.Y=AGVSpeed*sin((yaw-yawInt)*3.14159/180);
+     **/
      // AGVLocationX=AGVLocationX+AGVSpeedX*delayTimeSet/1000;
      //AGVLocationY=AGVLocationY+AGVSpeedY*delayTimeSet/1000;
 /**
@@ -691,15 +710,21 @@ void Datashare::readIO()
 	delayTimeMsecs(8);
 	numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
 	//ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
-    yaw = angle_trans(arrayTemp[4],arrayTemp[3]);
-    if(yaw>=0)
-        yaw=yaw;
-    else
-        yaw=yaw+360;
+    yaw = angle_trans(arrayTemp[4],arrayTemp[3])-yaw_error;
+    while(yaw>=360||yaw<0)
+    {
+        if(yaw>=360)
+            yaw-=360;
+        if(yaw<0)
+            yaw+=360;
+    }
 	if (yawFlag == true)
 	{
         if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
 	}
+    AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2 * cos(wheelRearAngle*3.14159/180);
+    AGVSpeeds.X=AGVSpeed*cos((yaw-yawInt)*3.14159/180);
+    AGVSpeeds.Y=AGVSpeed*sin((yaw-yawInt)*3.14159/180);
 
 	yawLast =	yaw;
 
@@ -756,13 +781,14 @@ void Datashare::gainAccessAndEnableWheel(void)
 void Datashare::checkIO()
 {
     int array[20] = {0};
+    /*********************************
     if (sickWarningSpaceAlert && (!sickFalse))
     {
         wheelMoveSpeedSetMax -=800; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
         systemOnLight = 0;
         warmingLight = 1;
         alarmLight = 0;
-        //write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+     //   write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
     }      //  unit: r/min ,fix in the future.
 
     if ((!sickWarningSpaceAlert) && (!sickFalse))
@@ -771,7 +797,7 @@ void Datashare::checkIO()
         systemOnLight = 1;
         warmingLight = 0;
         alarmLight = 0;
-        //write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+     //   write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
     }// The space is available, and add the speed upper limit.
 
     if (sickWarningSpaceAlert & sickFalse)
@@ -780,7 +806,7 @@ void Datashare::checkIO()
         systemOnLight = 0;
         warmingLight = 0;
         alarmLight = 1;
-        //write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+     //   write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
     }
 
     //if ( sickFalse && (!sickWarningSpaceAlert) )    emergencyFlag = true;                           // check in the future, whether the parameter is useful?
@@ -795,6 +821,7 @@ void Datashare::checkIO()
     sickA = 0;
     sickB = 0;
     sickC = 1;
+    ***********************************************/
 
     //wheelAngle = Incremental_PI(yaw,yawTarget);                                     //PI control the angle of wheel
     /**
@@ -816,11 +843,35 @@ void Datashare::checkIO()
         wheelAngle=-Pwm;
     }
     **/
-    wheelAngle = Position_PID2 (delta_s,turn_flag)+Position_PID(yaw, yawTarget);;
+    //wheelAngle = Position_PID2 (delta_s,turn_flag)+Position_PID(yaw, yawTarget);
+    if(turn_flag==false)
+    {
+        a = Position_PID2 (delta_s,turn_flag);
+        b = Position_PID(yaw, yawTarget);
+        if(fabs(delta_s)>=0.012)
+        {
+            wheelAngle = 1.6*a+0.4*b;
+        }
+        else
+        {
+            wheelAngle = a+b;
+        }
+    }
+    else
+    {
+        wheelAngle=Position_PID2 (delta_s,turn_flag);
+    }
+    if(wheelAngle<-45)
+        wheelAngle=-45;
+    if(wheelAngle>45)
+        wheelAngle=45;
+    //wheelAngle = Position_PID(yaw, yawTarget);
+
     writeWheelPosition(00,-wheelAngle + wheelFrontAngleOffset);
     write(fd2,writePositionData,sizeof(writePositionData));read(fd2,array,sizeof(array));
     writeWheelPosition(00,wheelAngle + wheelRearAngleOffset);
     write(fd4,writePositionData,sizeof(writePositionData));read(fd4,array,sizeof(array));
+
 
 	writeIO();
 
@@ -1228,11 +1279,20 @@ int Datashare::Incremental_PI (int Encoder,int Target)
 }
 
 /***************************************              **************************************************/
-int Datashare::Position_PID (int Encoder,int Target)
+double Datashare::Position_PID (double Encoder,double Target)
 {
-     static double Bias,Pwm,Integral_bias,Last_Bias;
+      double Bias=0,Pwm,Integral_bias;
+      static double Last_Bias=0;
      //Bias=angle_tran (Target,Encoder);
-     Bias=Target - Encoder;                                  //ŒÆËãÆ«²î
+      if(direction_flag==true)
+      {
+          Bias=Target - Encoder;                                  //ŒÆËãÆ«²î
+      }
+      else
+      {
+          Bias= Encoder - Target;
+      }
+
      if(Bias>180)
      {
          Bias=Bias-360;
@@ -1243,10 +1303,20 @@ int Datashare::Position_PID (int Encoder,int Target)
      {
          Bias=Bias+360;
      }
+     /*
      Integral_bias+=Bias;	                                 //Çó³öÆ«²îµÄ»ý·Ö
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
-     Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+     */
+     if(fabs(KP_Angle*Bias*10)<fabs(KD_Angle*(Bias-Last_Bias)))
+     {
+         Pwm=KP_Angle*Bias;
+     }
+     else
+     {
+         Pwm=KP_Angle*Bias+KD_Angle*(Bias-Last_Bias);
+     }
+     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
      Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
      if (Pwm>45) Pwm = 45;
      if (Pwm<-45) Pwm = -45;
@@ -1363,15 +1433,23 @@ bool Datashare::Two_bar_codes_Pro2(QString information)
 /***************************************  二维码信息进行位置，角度矫正处理   ***********************************************/
 double Datashare::Information_Corrective()
 {
-    static int Target_Location_Last=-1;  //上次的位置标号
+    //static int Target_Location_Last=-1;  //上次的位置标号
     int Target_Location=0;               //位置标号
     int Target_Number=0;                 //序列号
     double Side_Twocode=0;               //二维码图像边长
     double Angle_Error=0;                //角度偏差
-    double N_YawInt=0;                   //坐标系正方向修正角度
+    double Yaw_Error=0;                  //惯导漂移值
+    //double N_YawInt=0;                   //坐标系正方向修正角度
+    //double Chord_Length = 0;
+    Position delta_TwoCode = {0,0};
+    bool Flag_On_Road = false;           //二维码是否在路径上的标志位
     Position Image_Error={0,0};                   //图像上二维码中心到图像中心的像素点偏差
-    Position Error_Position[4]={{-0.0155,-0.0155},{0.0155,-0.0155},{-0.0155,0.0155},{0.0155,0.0155}};//此处的值是根据所贴二维码大小及之间位置决定
-
+    //int Count_Turn = 0;                  //转弯后朝向记录
+    struct Position *Error_Position ;    //偏差数组的指针
+    Position Error_Position_Front[4]={{0.0125,-0.0125},{-0.0125,-0.0125},{0.0125,0.0125},{-0.0125,0.0125}};//此处的值是根据所贴二维码大小及之间位置决定
+    Position Error_Position_Left[4]={{-0.0125,-0.0125},{-0.0125,0.0125},{0.0125,-0.0125},{0.0125,0.0125}};//此处的值是根据所贴二维码大小及之间位置决定
+    Position Error_Position_Back[4]={{-0.0125,0.0125},{0.0125,0.0125},{-0.0125,-0.0125},{0.0125,-0.0125}};//反向跑时二维码的方向
+    Position Error_Position_Right[4]={{0.0125,0.0125},{0.0125,-0.0125},{-0.0125,0.0125},{-0.0125,-0.0125}};//此处的值是根据所贴二维码大小及之间位置决定
     Target_Location=(QR_Code_Number-1)/4;
     Target_Number=(QR_Code_Number-1)%4;
 
@@ -1380,63 +1458,156 @@ double Datashare::Information_Corrective()
 
     /****此处加像素坐标差转换为实际位置坐标差 *******/
 
+
     Side_Twocode=sqrt((QR_Point[0].X-QR_Point[1].X)*(QR_Point[0].X-QR_Point[1].X)+(QR_Point[0].Y-QR_Point[1].Y)*(QR_Point[0].Y-QR_Point[1].Y));
-    Image_Error.X=Image_Error.X*(double)(0.026/Side_Twocode);//实际大小与图像倍数关系
-    Image_Error.Y=Image_Error.Y*(double)(0.026/Side_Twocode);
-    Error_Position[Target_Number].X-=Image_Error.X;
-    Error_Position[Target_Number].Y+=Image_Error.Y;
+    Image_Error.X=Image_Error.X*(double)(0.021/Side_Twocode);//实际大小与图像倍数关系
+    Image_Error.Y=Image_Error.Y*(double)(0.021/Side_Twocode);
+    //Chord_Length = 2*Distance_QR_CarCenter*sin((Angle_Error/2+1.8)*3.14159/180);
+    //Image_Error.X += Chord_Length;
+    //Image_Error.Y -= Chord_Length;
+    switch(Num_Turn/4)
+    {
+      case 0:
+            {
+               Error_Position = Error_Position_Front ;
+               Error_Position += Target_Number;
+               break;
+            }
+      case 1:
+            {
+               Error_Position = Error_Position_Left ;
+               Error_Position += Target_Number;
+               break;
+            }
+      case 2:
+            {
+               Error_Position = Error_Position_Back ;
+               Error_Position += Target_Number;
+               break;
+            }
+      case 3:
+            {
+               Error_Position = Error_Position_Right ;
+               Error_Position += Target_Number;
+               break;
+            }
+      default: break;
+    }
+    Error_Position->X+=Image_Error.X;
+    Error_Position->Y-=Image_Error.Y;
+    delta_TwoCode.X = Error_Position->X*cos((yawTarget-yawInt-90)*3.14159/180)-Error_Position->Y*sin((yawTarget-yawInt-90)*3.14159/180);
+    delta_TwoCode.Y = Error_Position->X*sin((yawTarget-yawInt-90)*3.14159/180)+Error_Position->Y*cos((yawTarget-yawInt-90)*3.14159/180);
+    if(direction_flag==true)
+    {
+        for(int i=num-1;i<=7;i++)
+        {
+            if(i<=0)
+            {
+                i=0;
+            }
+            if(P_TwoCode[Target_Location].X==P_Target[i].X)
+            {
+                if(P_TwoCode[Target_Location].Y==P_Target[i].Y)
+                {
+                    Flag_On_Road = true;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        for(int i=num+1;i>=0;i--)
+        {
+            if(i>=7)
+            {
+                i=7;
+            }
+            if(P_TwoCode[Target_Location].X==P_Target[i].X)
+            {
+                if(P_TwoCode[Target_Location].Y==P_Target[i].Y)
+                {
+                    Flag_On_Road = true;
+                    break;
+                }
+            }
+        }
+    }
 
-    AGVLocation.X = P_Target2[Target_Location].X+Error_Position[Target_Number].X;
-    AGVLocation.Y = P_Target2[Target_Location].Y+Error_Position[Target_Number].Y;
+    if(Flag_On_Road==true)
+    {
+        AGVLocation.X = P_TwoCode[Target_Location].X+delta_TwoCode.X;
+        AGVLocation.Y = P_TwoCode[Target_Location].Y+delta_TwoCode.Y;
+    }
+
+
 /*角度*/
+    Angle_Error = Angle_QRtoCar-180-Num_Turn*90;
+    if(Flag_On_Road==true)
+    {
+        if(turn_flag==false)
+        {
+            yawInt = yaw-90-Angle_Error-0.2-Num_Turn*90;//坐标系的重建
+            while(yawInt<0||yawInt>=360)
+            {
+                if(yawInt<0)
+                    yawInt+=360;
+                if(yawInt>360)
+                    yawInt-=360;
+            }
+            yawTarget = yaw - Angle_Error-0.2;//目标方向修正
+            while(yawTarget<0||yawTarget>=360)
+            {
+                if(yawTarget<0)
+                    yawTarget+=360;
+                if(yawTarget>360)
+                    yawTarget-=360;
+            }
+        }
+/*********************
+        if(Target_Location==0)
+        {          
+            yawInt = yaw-90-Angle_Error-0.2;//坐标系的重建
+            while(yawInt<0||yawInt>=360)
+            {
+                if(yawInt<0)
+                    yawInt+=360;
+                if(yawInt>360)
+                    yawInt-=360;
+            }
 
-    if(Angle_QRtoCar<=180)
-    {
-        Angle_Error = Angle_QRtoCar;
+            yawTarget = yaw - Angle_Error-0.2;//目标方向修正
+            while(yawTarget<0||yawTarget>=360)
+            {
+                if(yawTarget<0)
+                    yawTarget+=360;
+                if(yawTarget>360)
+                    yawTarget-=360;
+            }
+        }
+*********************/
+/******************************
+        else
+        {
+            if(turn_flag==false)
+            {
+                Yaw_Error = yaw-(yawTarget+Angle_Error);
+            }
+            else
+            {
+                Yaw_Error = yaw-(yawTarget_Last+Angle_Error);
+            }
+            while(Yaw_Error<0||Yaw_Error>=360)
+            {
+                if(Yaw_Error<0)
+                    Yaw_Error +=360;
+                if(Yaw_Error>360)
+                    Yaw_Error -=360;
+            }
+        }
+    *********************************/
     }
-    else
-    {
-        Angle_Error = Angle_QRtoCar-360;
-    }
-
-    if(Target_Location==0)
-    {
-        yawInt = yaw-90-Angle_Error;
-        if(yawInt<0)
-            yawInt+=360;
-        if(yawInt>360)
-            yawInt-=360;
-    }
-    else
-    {
-        N_YawInt = yaw-90-Angle_Error;
-        if(N_YawInt<0)
-            N_YawInt += 360;
-        if(yaw-90-Angle_Error>360)
-            N_YawInt -= 360;
-        yawInt = double(yawInt+N_YawInt)/2;
-
-    }
-    /***
-    else
-    {
-        yawInt = (double)(yawInt+yaw-90-Angle_Error)/2;
-        if(yawInt<0)
-            yawInt+=360;
-        if(yawInt>360)
-            yawInt-=360;
-    }
-    ***/
-    //if(Target_Location!=Target_Location_Last)
-    {
-        yawTarget = yaw - Angle_Error;
-        if(yawTarget<0)
-            yawTarget+=360;
-        if(yawTarget>360)
-            yawTarget-=360;
-        Target_Location_Last=Target_Location;
-    }
-    return 0;
+    return Yaw_Error;
 }
 /***************************************   新版PID         **************************************************/
 double Datashare::Position_PID2 (double delta,bool flag)
@@ -1456,7 +1627,15 @@ double Datashare::Position_PID2 (double delta,bool flag)
          if(Integral_delta<-120)
              Integral_delta=-120;
          //Pwm=KP_Line*delta+KI*Integral_delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
-         Pwm=KP_Line*delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         if(fabs(KP_Line*delta*10)>fabs(KD*(delta-Last_delta)))
+         {
+             Pwm=KP_Line*delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         }
+         else
+         {
+              Pwm=KP_Line*delta;
+         }
+         //Pwm=KP_Line*delta+KD*(delta-Last_delta);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Last_delta=delta;
          Last_delta_turn=0;
      }
@@ -1502,19 +1681,35 @@ double Datashare::Straight_Line (Position P_Now,Position P_Start,Position P_Targ
 
     delta_x=P_Target.X-P_Now.X;
     delta_y=P_Target.Y-P_Now.Y;
-    if(abs(P_Target.X-P_Start.X)>=abs(P_Target.Y-P_Start.Y))
+    if(fabs(P_Target.X-P_Start.X)>=fabs(P_Target.Y-P_Start.Y))
     {
-        if(abs(P_Target.Y-P_Start.Y)<=0.00001)
+        if(fabs(P_Target.Y-P_Start.Y)<=0.00001)
         {
            if(P_Target.X-P_Start.X>0)
            {
                out=P_Target.Y;
-               return (out-P_Now.Y);
+               if(direction_flag==true)
+               {
+                   return (out-P_Now.Y);
+               }
+               else
+               {
+                   return (P_Now.Y-out);
+               }
+
            }
            else
            {
                out=P_Target.Y;
-               return (P_Now.Y-out);
+               if(direction_flag==true)
+               {
+                   return (P_Now.Y-out);
+               }
+               else
+               {
+                   return (out-P_Now.Y);
+               }
+
            }
         }
         else
@@ -1526,17 +1721,33 @@ double Datashare::Straight_Line (Position P_Now,Position P_Start,Position P_Targ
     }
     else
     {
-        if(abs(P_Target.X-P_Start.X)<=0.00001)
+        if(fabs(P_Target.X-P_Start.X)<=0.00001)
         {
             if(P_Target.Y-P_Start.Y>0)
             {
                 out=P_Target.X;
-                return (P_Now.X-out);
+                if(direction_flag==true)
+                {
+                    return (P_Now.X-out);
+                }
+                else
+                {
+                    return (out-P_Now.X);
+                }
+
             }
             else
             {
                 out=P_Target.X;
-                return (out-P_Now.X);
+                if(direction_flag==true)
+                {
+                    return (out-P_Now.X);
+                }
+                else
+                {
+                    return (P_Now.X-out);
+                }
+
             }
         }
         else
@@ -1614,6 +1825,7 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
     double Angle ;                       // 返回给PID的参考值
     Position Circle_Point;              //
     double delta_angle=0;//角度的偏差
+    double yawTarget_Delta=0;
 
     //if(P_Target.X!=P_Now.X)
     //K_And=(double)(P_Target.Y-P_Now.Y)/(P_Target.X-P_Now.X);
@@ -1628,10 +1840,17 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
 
     //Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
     Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
-    if(Distance_NowToTar_sq<=0.0025)//到达目标点，精度为30cm
+    if(Distance_NowToTar_sq<=0.1)//到达目标点，精度为30cm(出弯点)
     {
+        if(direction_flag==true)
+        {
+            num++;
+        }
+        else
+        {
+            num--;
+        }
        turn_flag=false;
-       //num++;
     }
     delta_angle=yawTarget-yaw;
             if(delta_angle>180)
@@ -1644,20 +1863,92 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
             {
                 delta_angle=delta_angle+360;
             }
-    if(Angle>0)               //朝外
+
+    yawTarget_Delta = yawTarget-yawTarget_Last;
+    if(yawTarget_Delta>180)
     {
-        if(delta_angle<0)
-            return (-Angle);
-        else
-            return 0;
+        yawTarget_Delta=yawTarget_Delta-360;
+    }else if(yawTarget_Delta>=(-180))
+    {
+        yawTarget_Delta=yawTarget_Delta;
     }else
     {
-        if(delta_angle<0)
-             return 0;
-        else
-            return (-Angle);
+        yawTarget_Delta=yawTarget_Delta+360;
     }
-    return Angle;
+            if(direction_flag==true)
+            {
+                if(yawTarget_Delta>0)
+                {
+                    if(Angle>0)               //朝外
+                    {
+                        if(delta_angle<0)
+                            return (-Angle);
+                        else
+                            return 0;
+                    }else
+                    {
+                        if(delta_angle<0)
+                             return 0;
+                        else
+                            return (-Angle);
+                    }
+                }
+                else
+                {
+                    if(Angle>0)               //朝外
+                    {
+                        if(delta_angle>0)
+                            return (Angle);
+                        else
+                            return 0;
+                    }else
+                    {
+                        if(delta_angle>0)
+                             return 0;
+                        else
+                            return (Angle);
+                    }
+                }
+
+            }
+            else
+            {
+                if(yawTarget_Delta<0)
+                {
+                    if(Angle>0)               //朝外
+                    {
+                        if(delta_angle<0)
+                            return 0;
+                        else
+                            return (-Angle);
+                    }else
+                    {
+                        if(delta_angle<0)
+                             return (-Angle);
+                        else
+                            return 0;
+                    }
+                }
+                else
+                {
+                    if(Angle>0)               //朝外
+                    {
+                        if(delta_angle<0)
+                            return (Angle);
+                        else
+                            return 0;
+                    }else
+                    {
+                        if(delta_angle<0)
+                             return 0;
+                        else
+                            return (Angle);
+                    }
+                }
+
+            }
+
+    return 0;
 
 
 }
@@ -1704,42 +1995,146 @@ double Datashare::Go (Position P_Target )
   return Dis_NowToTar;
 }
 /***************************************   走函数(加直线)      **************************************************/
-double Datashare::Go2 (Position P_Target )
+double Datashare::Go2 (Position P_Targets )
 {
    double Dis_NowToTar=0;
    //int circle_N=0;
    double R=0;
    bool Straight_Bend = false;
+   double a=0.0025;
+   Vector Vector_Now={0,0,0};
+   Vector Vector_NowTar ={0,0,0};
+   Vector Vector_Cross_Product = {0,0,0};
+   //double Angle_NowTar=0;
+   //static int Num_Bend = 0;
 
-  Dis_NowToTar=(AGVLocation.X-P_Target.X)*(AGVLocation.X-P_Target.X)+(AGVLocation.Y-P_Target.Y)*(AGVLocation.Y-P_Target.Y);
-  if(Dis_NowToTar<0.0025)
+  Dis_NowToTar=(AGVLocation.X-P_Targets.X)*(AGVLocation.X-P_Targets.X)+(AGVLocation.Y-P_Targets.Y)*(AGVLocation.Y-P_Targets.Y);
+  if(turn_flag==true)
+      a=0.01;
+  else
+      a=0.01;
+  if(Dis_NowToTar<a)//直线点以及入弯点精度
   {
           //num++;
-          for(int i=0;i<=num;i++)
+          if(direction_flag==true)
           {
-              if(P_Target2[num].X==P_Target3[i].X)
+              for(int i=0;i<=num;i++)
               {
-                  if(P_Target2[num].Y==P_Target3[i].Y)
+                  if(P_Target[num].X==P_Target3[i].X)
                   {
-                      Straight_Bend =true;
-                      break;
+                      if(P_Target[num].Y==P_Target3[i].Y)
+                      {
+                          Straight_Bend =true;
+                          break;
+                      }
                   }
               }
-          }
-          if(Straight_Bend==true)
-          {
-              yawTarget+=90;//此处要优化
-              if(yawTarget>360)
-                 yawTarget-=360;
-              if(yawTarget<0)
-                  yawTarget+=360;
-              turn_flag=true;
+              if(Straight_Bend==true)
+              {
+                    Vector_Now.X = P_Target[num].X- P_Target[num-1].X;
+                    Vector_Now.Y = P_Target[num].Y- P_Target[num-1].Y;
+                    Vector_Now.Z = 0;
+                    Vector_NowTar.X = P_Target[num+1].X- P_Target[num].X;
+                    Vector_NowTar.Y = P_Target[num+1].Y- P_Target[num].Y;
+                    Vector_NowTar.Z = 0;
+                    Vector_Cross_Product.Z = Vector_Now.X*Vector_NowTar.Y-Vector_Now.Y*Vector_NowTar.X;
+                    if(Vector_Cross_Product.Z>0)
+                    {
+                        yawTarget_Last = yawTarget;
+                        Num_Turn+=1;
+                       yawTarget+=90;
+                    }
+                    if(Vector_Cross_Product.Z<0)
+                    {
+                        yawTarget_Last = yawTarget;
+                        Num_Turn-=1;
+                       yawTarget-=90;
+                    }
+                  //yawTarget+=(90);
+                  //Angle_Bend+=90;
+                  if(yawTarget>360)
+                     yawTarget-=360;
+                  if(yawTarget<0)
+                      yawTarget+=360;
+                  turn_flag=true;
+              }
+              else
+              {
+                  //num++;
+                  //turn_flag=false;
+              }
+              if(turn_flag!=true)//位置不能变
+              {
+                 num++;
+              }
+              if(turn_flag==true&&Straight_Bend==true)//弯道入口处
+              {
+                  num++;
+              }
           }
           else
           {
-              turn_flag=false;
+              for(int i=0;i<=0;i++)
+              {
+                  if(P_Target[num].X==P_Target4[i].X)
+                  {
+                      if(P_Target[num].Y==P_Target4[i].Y)
+                      {
+                          Straight_Bend =true;
+                          break;
+                      }
+                  }
+              }
+              if(Straight_Bend==true)
+              {
+                    Vector_Now.X = P_Target[num].X- P_Target[num+1].X;
+                    Vector_Now.Y = P_Target[num].Y- P_Target[num+1].Y;
+                    Vector_Now.Z = 0;
+                    Vector_NowTar.X = P_Target[num-1].X- P_Target[num].X;
+                    Vector_NowTar.Y = P_Target[num-1].Y- P_Target[num].Y;
+                    Vector_NowTar.Z = 0;
+                    Vector_Cross_Product.Z = Vector_Now.X*Vector_NowTar.Y-Vector_Now.Y*Vector_NowTar.X;
+                    if(Vector_Cross_Product.Z>0)
+                    {
+                        yawTarget_Last = yawTarget;
+                        Num_Turn+=1;
+                       yawTarget+=90;
+                    }
+                    if(Vector_Cross_Product.Z<0)
+                    {
+                        yawTarget_Last = yawTarget;
+                        Num_Turn-=1;
+                       yawTarget-=90;
+                    }
+                  //yawTarget+=(90);
+                  //Angle_Bend+=90;
+                  if(yawTarget>360)
+                     yawTarget-=360;
+                  if(yawTarget<0)
+                      yawTarget+=360;
+                  turn_flag=true;
+              }
+              else
+              {
+                  //num++;
+                  //turn_flag=false;
+              }
+              if(turn_flag!=true)//位置不能变
+              {
+                 num--;
+              }
+              if(turn_flag==true&&Straight_Bend==true)//弯道入口处
+              {
+                  num--;
+              }
           }
-          num++;
+          while(Num_Turn<0||Num_Turn>4)
+          {
+              if(Num_Turn<0)
+                  Num_Turn+=4;
+              if(Num_Turn>=4)
+                  Num_Turn-=4;
+          }
 
   }
   return Dis_NowToTar;
