@@ -317,7 +317,7 @@ void MainWindow::systemOn(void)
         {
             if(mptr.direction_flag==true)
             {
-
+//                mptr.P_Centre = mptr.turnCenter[mptr.countOfTurnCentre];      //待测试
                 if(mptr.num==3)
                 mptr.P_Centre={-2,2};
                 if(mptr.num==8)
@@ -328,6 +328,7 @@ void MainWindow::systemOn(void)
             }
             else
             {
+//                mptr.P_Centre = mptr.turnCenter[mptr.countOfTurnCentre];      //待测试
                 if(mptr.num==2)
                 mptr.P_Centre={-2,2};
                 if(mptr.num==7)
@@ -492,7 +493,7 @@ void MainWindow::readWifi()
                 ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Target2[i].X).arg(mptr.P_Target2[i].Y));
             }
 
-            for(int i=1; i<mptr.numberOfStaEnd-2; i+=2)
+            for(int i=1; i<mptr.numberOfStaEnd-2; i+=2)                     //自动生成圆心
             {
                 if(mptr.start_end[i+1].X== mptr.start_end[i+2].X)                   //计算圆心角
                 {
@@ -521,8 +522,10 @@ void MainWindow::readWifi()
                     v = 2*(-1);
                // u = 2*cos(target_angel*pi/180);
                 //v = 2*sin(target_angel*pi/180);
-                mptr.turnCenter[(i+1)/2].X = mptr.start_end[i-1].X + u;
-                mptr.turnCenter[(i+1)/2].Y = mptr.start_end[i-1].Y + u;
+                mptr.turnCenter[(i-1)/2].X = mptr.start_end[i-1].X + u;
+                mptr.turnCenter[(i-1)/2].Y = mptr.start_end[i-1].Y + v;
+
+                mptr.numberOfTurnCentre++;
 
 //                center_x？？？？？？？？ = start_end[i-1].X + u;//计算转弯圆心
 //                center_y ？？？？？？？？？？？？？？？？= start_end[i-1].Y + v;
@@ -534,7 +537,7 @@ void MainWindow::readWifi()
         //tcpSocket 清除缓冲区
 }
 
-/**************************  写WiFi   ***********************/
+/**************************  写WiFi （将AGV的信息拼接字符串之后送到上位机）  ***********************/
 void MainWindow::writeWifi(void)
 {
     //L:sta:x:y:theta:speed:baterry:voltage:current:end
@@ -932,7 +935,7 @@ int MainWindow::ConvertHexChar(char ch)
     else return (-1);
 }
 
-/*********************************************清楚显示区*****************************************************************/
+/*********************************************清除显示区*****************************************************************/
 void MainWindow::on_cleanCommunicationButton_clicked()
 {
     ui->CommunicationEdit->clear();
@@ -1076,48 +1079,6 @@ void MainWindow::wheelZeroCalibration()
     write(mptr.fd2,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
     write(mptr.fd3,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd3,array,sizeof(array));//fflush(stdout);
     write(mptr.fd4,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd4,array,sizeof(array));//fflush(stdout);
-
-//    ui->CommunicationEdit->append("left detect!");
-//    while((limitFlag2left==false)||(limitFlag4left==false))
-//    {
-//        if(mptr.breakFlag == false)
-//        {
-//            mptr.readIO();
-//            do{
-//                steerFrontLimitTemp = mptr.steerFrontLimitDetect;
-//                steerBackLimitTemp = mptr.steerBackLimitDetect2;
-//                mptr.readIO();
-//            }while((steerFrontLimitTemp != mptr.steerFrontLimitDetect) && (steerBackLimitTemp != mptr.steerBackLimitDetect2));
-//            if(mptr.steerFrontLimitDetect == false)
-//            {
-//                mptr.wheelAngle2 -= 1;
-//                mptr.writeWheelPosition(00,mptr.wheelAngle2);
-//                write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
-//                limitFlag2left =false;
-//            }
-//            else
-//            {
-//                frontLeftTemp = mptr.wheelAngle2 ;
-//                limitFlag2left = true;
-//            }
-//            if(mptr.steerBackLimitDetect2 == false)
-//            {
-//                mptr.wheelAngle4 -= 1;
-//                mptr.writeWheelPosition(00,mptr.wheelAngle4);
-//                write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
-//                limitFlag4left = false;
-//            }
-//            else
-//            {
-//                backLeftTemp = mptr.wheelAngle4;
-//                limitFlag4left = true;
-//            }
-//            mptr.delayTimeMsecs(100);
-//        }
-//        else
-//            break;
-
-//    }
 
     ui->CommunicationEdit->append("right detect!");
     while((limitFlag2==false) || (limitFlag4==false))

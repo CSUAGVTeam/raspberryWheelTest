@@ -784,7 +784,7 @@ void Datashare::checkIO()
 {
     int array[20] = {0};
     /*********************************
-    if (sickWarningSpaceAlert && (!sickFalse))
+    if (sickWarningSpaceAlert && (!sickFalse))          //增加限速的东西，和师兄对接
     {
         wheelMoveSpeedSetMax -=0.1; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
         systemOnLight = 0;
@@ -1318,11 +1318,11 @@ double Datashare::Position_PID (double Encoder,double Target)
      {
          Pwm=KP_Angle*Bias+KD_Angle*(Bias-Last_Bias);
      }
-     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
-     Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
+     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //
+     Last_Bias=Bias;                                       //
      if (Pwm>45) Pwm = 45;
-     if (Pwm<-45) Pwm = -45;
-     return Pwm;                                           //ÔöÁ¿Êä³ö
+     if (Pwm<-45) Pwm = -45;                                //不是已经换成30了么？是否要换成±30？？
+     return Pwm;                                           //
 }
 
 /***************************************   QR code information processinng  *********************************/
@@ -1650,14 +1650,14 @@ double Datashare::Position_PID2 (double delta,bool flag)
              Integral_delta_turn=300;
          if(Integral_delta_turn<-300)
              Integral_delta_turn=-300;
-         //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
-         Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //
+         Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //
          Last_delta_turn=delta;
          Last_delta=0;
      }
      if (Pwm>45) Pwm = 45;
-     if (Pwm<-45) Pwm = -45;
-     return Pwm;                                           //ÔöÁ¿Êä³ö
+     if (Pwm<-45) Pwm = -45;                               //角度换成30？？？
+     return Pwm;                                           //
 }
 /***************************************   圆周运动的圆心计算函数       **************************************************/
 /**
@@ -2106,6 +2106,10 @@ double Datashare::Go2 (Position P_Targets )
                       if(yawTarget<0)
                           yawTarget+=360;
                       turn_flag=true;
+                      if(direction_flag==true)
+                          countOfTurnCentre++;
+                      else
+                          countOfTurnCentre--;
                   }
                   else
                   {

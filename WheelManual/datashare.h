@@ -63,6 +63,8 @@ public:
     double b=0;                                      //直线角度PID输出量
     double yaw_error=0;                              //惯导飘移角度
     int Num_Turn = 0;                                //转弯的数量（左加右减）
+    int numberOfTurnCentre = 0;                      //圆心的数量
+    int countOfTurnCentre = 0;                       //到第几个圆心的计数
 
     QString buf_last=NULL;                       //上次二维码信息
     double delta_s;                                 //path planning deviation
@@ -83,9 +85,9 @@ public:
     int wheelAddress;								//舵机地址选择
     int delayTimeSet;								//延时数据
 
-    int batteryCollum=0;
-    int batteryVoltage=0;
-    int batteryCurrent=0;
+    int batteryCollum=0;                            //电池容量
+    int batteryVoltage=0;                           //电池电压
+    int batteryCurrent=0;                           //电池电流
 
     bool turn_flag=false;
     bool direction_flag=true;                       //方向标志位（正向为true，反向为false）
