@@ -3,7 +3,6 @@
 
 #include <QMainWindow>
 #include "datashare.h"
-#define pi 3.14159
 
 namespace Ui {
 class MainWindow;
@@ -18,8 +17,6 @@ public:
     ~MainWindow();
     Datashare mptr;
 
-
-
 public:
                                                                                         //read I/O and save the data
 
@@ -29,17 +26,11 @@ public:
 
     void wheelZeroCalibration(void);                                                    //calibrate the steering wheel to zero
 
-    void writeWifi(void);
+
 
 private slots:
 
     void ReadData ();
-
-    void readWifi();
-
-    void reconnect();
-
-    void TCPconnected();
 
     void on_forwardButton_pressed();
 
@@ -121,13 +112,10 @@ private slots:
 
     void on_kdSpinBox_editingFinished();
 
-    void on_reconnectButton_clicked();
-
 private:
     Ui::MainWindow *ui;
 
     QTcpSocket *tcpSocket;
-    QTcpSocket *tcpSocket1;
 };
 
 #endif // MAINWINDOW_H

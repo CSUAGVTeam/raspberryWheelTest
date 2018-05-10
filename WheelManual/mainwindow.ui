@@ -633,32 +633,6 @@
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QPushButton" name="reconnectButton">
-    <property name="geometry">
-     <rect>
-      <x>320</x>
-      <y>100</y>
-      <width>80</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>reconnect</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="TCPStatusLabel">
-    <property name="geometry">
-     <rect>
-      <x>430</x>
-      <y>100</y>
-      <width>211</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -666,7 +640,7 @@
      <x>0</x>
      <y>0</y>
      <width>777</width>
-     <height>22</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

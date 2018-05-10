@@ -47,6 +47,9 @@ public:
 
     unsigned char readInertialBuff[8]={0x04,0x03, 0x00, 0x04, 0x00, 0x04, 0x05, 0x9d};          //telegram for reading the navigation part
 
+    char stopReadGun[16] = {0x7C, 0x7C, 0x3E, 0x54, 0x52, 0x49, 0x47, 0x47, 0x45, 0x52, 0x20, 0x4F, 0x46, 0x46, 0x0D, 0x0A};
+    char startReadGun[15] = {0x7C, 0x7C, 0x3E, 0x54, 0x52, 0x49, 0x47, 0x47, 0x45, 0x52, 0x20, 0x4F, 0x4E, 0x0D, 0x0A};
+
     QString frontTelegram;
     QString backTelegram;
     char write0RPM[14];								//舵机停车，0速报文存放地址
@@ -54,17 +57,13 @@ public:
     char commanDataReverse[14];						//舵机反响写速度报文存放数组
     double AGVSpeed;							    //AGV速度
     int num=0;                                      //path number
-    int numberOfStaEnd = 0;                                 //起点终点的数量
     //double Distance_QR_CarCenter=0.48;              //用不到了
     //QTcpSocket *tcpSocket;                          //二维码TCP/IP通信套接字
     QString buf=NULL;                               //二维码解读信息存储字符串
-    QString bufWifi=NULL;                           //wifi信息存储字符串
     double a=0;                                      //直线位置PID输出量
     double b=0;                                      //直线角度PID输出量
     double yaw_error=0;                              //惯导飘移角度
     int Num_Turn = 0;                                //转弯的数量（左加右减）
-    int numberOfTurnCentre = 0;                      //圆心的数量
-    int countOfTurnCentre = 0;                       //到第几个圆心的计数
 
     QString buf_last=NULL;                       //上次二维码信息
     double delta_s;                                 //path planning deviation
@@ -84,13 +83,9 @@ public:
     unsigned int Gr1;								//CRC校验
     int wheelAddress;								//舵机地址选择
     int delayTimeSet;								//延时数据
-
-    int batteryCollum=0;                            //电池容量
-    int batteryVoltage=0;                           //电池电压
-    int batteryCurrent=0;                           //电池电流
-
+    
     bool turn_flag=false;
-    bool direction_flag=true;                       //方向标志位（正向为true，反向为false）
+    bool direction_flag;                       //方向标志位（正向为true，反向为false）
     bool direction_flag_last=true;
     bool initialReady = false;                                          //check whether the system has iniitaled,true=ready,flase=not ready 初始化完成标志
     bool breakFlag = true;                                              //judge MainWindow::systemOn() loop whether to stop					手自切换标志
@@ -114,8 +109,6 @@ public:
     bool reserve1,reserve2,reserve3,chargeContactorPickup,wheelMoveFrontBrake,wheelMoveBackBrake,conveyorForward,
         conveyorBack,conveyorBrake,liftFrontOn,liftBackOn,systemOnLight,alarmLight,warmingLight,batteryChargeCircuitOn,chargeStart,batteryChargeComplete;
 
-    bool TCPconnectFlag = 0;
-
     bool sickA = 1;
     bool sickB = 1;
     bool sickC = 1;
@@ -125,7 +118,8 @@ public:
     bool Flag_SpeedDe = false;//减速标志
     bool Flag_SpeedAdd = false;//加速标志
     bool Flag_Stop = false;
-    int num_AddSpeed = 29;  //记录出弯点，到出弯后一个点加速
+    int num_AddSpeed = 20;  //记录出弯点，到出弯后一个点加速
+    int targetNumber = 24; //路径长度
 
     //**********   目标值设定 ************
         double Td_SpeedSet=0;      //目标速度
@@ -160,13 +154,13 @@ public:
         double NL_h1 = 0.4;
         double Pos_u0 = 0;
 
-    double KP = 10.0;                                        //PID coefficient
+    double KP = 14.0;                                        //PID coefficient
     double KI = 0;
     double KD = 1250.0;//1250.0
 
-    double KP_Angle = 1.0;                                        //PID coefficient
+    double KP_Angle = 1;                                        //PID coefficient
     double KI_Angle = 0;
-    double KD_Angle = 0.2;
+    double KD_Angle = 0.4;
 
 
     double KP_turn=60.0;
@@ -179,18 +173,13 @@ public:
     double yawInt = 0;
     double yawTarget_Last=0;
 
-	bool yawFlag = false;
+//	bool yawFlag = false;
     bool QR_Flag = false;
 
     struct Position
     {
         double X;
         double Y;
-    };
-    struct PositionStaEnd
-    {
-        int X;
-        int Y;
     };
     struct Vector
     {
@@ -220,36 +209,26 @@ public:
                               {-4,0},{-3,0},{-2,0},{-1,0},{-1,4},{-2,4},{-7.951,7},{-8.049,7},{-6,0.049},{-3,4},
                               {-6,-0.049},{-7,4},{-6,4},{-5,4},{-2,3.951},{-4,4},{-2,8.951},{-2,9.049},{-2,4.049},{-6,4.049},
                               {-0.049,7},{0.049,7},{-0.098,7},{0.098,7},{-2,0.049},{-2,-0.049},{-6,3.951},{-7.951,6},{-7.951,2},{-8.049,2},
-                              {-8.049,6},{0.049,6},{-6,8.951},{-0.049,2},{-6,9.049},{0.049,2},{-6,8.951},{-6,8.902},{-6,9.049},{-0.049,6}};//二维码坐标位置
-     /*
+                              {-8.049,6},{0.049,6},{-6,8.951},{-0.049,2},{-6,9.049},{0.049,2},{0,10},{0,9.75},{0,9.5},{-0.049,6}};//二维码坐标位置
+
           Position P_Target[30] = { {0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},
                                     {-2,9},{-3,9},{-4,9},{-5,9},{-6,9},
                                     {-8,7},{-8,6},{-8,5},{-8,4},{-8,3},{-8,2},
-                                    {-6,0},{-5,0},{-4,0},{-3,0},{-2,0},{0,2}};//路径坐标
-     */
-     //{2,4},{3,4},{4,4},
-     Position P_Target[30] = { {0,0},{0,1},{0,2},
-                               {-2,4},{-3,4},{-4,4},{-5,4},{-6,4},
-                               {-8,6},{-8,7},{-6,9},{-5,9},{-4,9} };//路径坐标
-     /*
-         Position P_Target[30] = { {0,0},{0,1},{0,2},
-                                   {2,4},{3,4},{4,4} };  //test
-     */
-        // Position P_Target3[100]={{0,7},{-6,9},{-8,2},{-2,0}};//弯道坐标(正向入弯点)
-         // Position P_Target4[100]={{-2,9},{-8,7},{-6,0},{0,2}};//弯道坐标（正向出弯点）
+                                    {-6,0},{-5,0},{-4,0},{-3,0},{-2,0}};//路径坐标
 
-     Position P_Target3[100]={{0,2},{-6,4},{-8,7}};//弯道坐标(正向入弯点) test
-     Position P_Target4[100]={{-6,9},{-8,6},{-2,4}};//弯道坐标（正向出弯点）
-/*
+
+
+        Position P_Target3[100]={{0,7},{-6,9},{-8,2},{-2,0}};//弯道坐标(正向入弯点)
+        Position P_Target4[100]={{-2,9},{-8,7},{-6,0},{0,2}};//弯道坐标（正向出弯点）
+
+
+
      Position P_Target2[100]={{0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{0,7},{0,8},{0,9},
                               {0,10},{0,11},{0,12},{0,13},{0,14},{0,15},{0,16},{0,17},{0,18},{0,19},
                               {0,20},{0,21},{0,22},{0,23},{0,24},{0,25},{0,26},{0,27},{0,28},{0,29},
                               {0,30},{0,31},{0,32},{0,33},{0,34},{0,35},{0,36},{0,37},{0,38},{0,39}};//路径坐标
- */
-     Position P_Target2[100]={{0,0}};
      Position P_Stop = {0,5}; //停车点
-     PositionStaEnd start_end[100] = {{0,0}};               //从TCP/IP信息中解出的首末点存放数组
-     PositionStaEnd turnCenter[100]={{0,0}};
+     Position P_protection = {0,0};  //2.5m检测不到二维码停车
      //Position P_Target3[100]={{0,1000}};//弯道坐标
      Curve_Planning P_Curve[100]={{0,1,-2,3,2}};//********************************
      Position Image_Center={800,600};                                            //图像中心点像素坐标
@@ -359,8 +338,10 @@ public:
     void ESO(float u,float b,float output,float h);
     //速度设定
     void Speed_Adj(void);
+    //启动初始化
+    void Code_Init();
 
-    int Trace(int x1,int y1,int x2,int y2, int init );  //自动生成路径坐标函数
+
 signals:
 
     void timingbeginSignal();

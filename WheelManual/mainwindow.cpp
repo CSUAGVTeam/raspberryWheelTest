@@ -17,7 +17,6 @@
 #include <QString>
 #include <QByteArray>
 #include <QSpinBox>
-#include <QDataStream>
 #include <math.h>
 
 
@@ -30,23 +29,14 @@ MainWindow::MainWindow(QWidget *parent) :
 /*****************  二维码TCPIP协议的连接  ****************/
     tcpSocket = NULL;
     tcpSocket = new QTcpSocket(this);
-    QString ip="169.254.68.106";
+    QString ip="192.168.20.61";
     //QString ip="192.168.10.11";
     //QString ip="10.0.0.3";
     qint16 port=23;
     tcpSocket->connectToHost(ip,port);
     connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(ReadData()));
- /*****************  上位机TCPIP协议的连接  ****************/
-    tcpSocket1 = NULL;
-    tcpSocket1 = new QTcpSocket(this);
-    QString ip1= "10.0.0.2"; //"192.168.10.12";
-    //QString ip="192.168.10.11";
-    //QString ip="10.0.0.3";
-    qint16 port1=6666;
-    tcpSocket1->connectToHost(ip1,port1);
-    connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
-    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
-    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
+    mptr.delayTimeMsecs(1000);
+    tcpSocket->write(mptr.startReadGun);
 /*****************   UI界面的初始设计  ******************/
     ui->speedEdit->setText(c1.setNum(mptr.wheelMoveSpeedSet));
     ui->addressEdit->setText(c1.setNum(mptr.wheelAddress));
@@ -83,8 +73,16 @@ void MainWindow::initialTheSystem(void)
                 wheelZeroCalibration();                  //find the zero point of the steering wheel
             }
         }
-    //writeWifi();
-    systemOn();
+    while(1)
+    {
+        mptr.Code_Init();
+        //ui->CommunicationEdit->append(tr("init "));
+        if(mptr.breakFlag == false)
+            systemOn();
+        QApplication::processEvents(QEventLoop::AllEvents,1000);
+        mptr.delayTimeMsecs(1000);
+    }
+
 }
 
 /*****************系统运行函数****************************************************************************************************************************/
@@ -96,36 +94,24 @@ void MainWindow::systemOn(void)
     double R=0;
     //mptr.AGVLocation={0,0};
 //    mptr.breakFlag = false;
-
+    mptr.Speed_Td_x1 = 0;
     mptr.readIO();
-    if(mptr.wheelMoveSpeedSet>=0)
-    {
-        mptr.direction_flag=true;
-        mptr.P_Stop = {-4,9};
-    }
-    else
-    {
-        mptr.direction_flag=false;
-        mptr.P_Stop ={0,0};
-    }
 
+    if(mptr.direction_flag == false)
+    {
+        mptr.wheelMoveSpeedSet = -mptr.wheelMoveSpeedSet;
+    }
+/****************
     if(mptr.direction_flag==true)
     {
-        if(mptr.direction_flag_last==false)
-        {
-            mptr.num+=1;
-        }
-        else
-        {
+
             mptr.yawTarget = mptr.yaw;
             mptr.yawInt=mptr.yaw-90;
             if(mptr.yawInt<0)
                 mptr.yawInt+=360;
             if(mptr.yawInt>=360)
                 mptr.yawInt-=360;
-        }
 
-        mptr.direction_flag_last=true;
     }
     else
     {
@@ -135,8 +121,9 @@ void MainWindow::systemOn(void)
         }
         mptr.direction_flag_last=false;
     }
+    ***********/
     //mptr.yawLast = mptr.yaw;
-	mptr.yawFlag == true;
+    //mptr.yawFlag == true;
    // speedTemp = mptr.Td_SpeedSet;
     //QTime t1;
     //t1 = QTime::currentTime().addSecs(60);
@@ -154,21 +141,16 @@ void MainWindow::systemOn(void)
         if(mptr.breakFlag == false)
         {
                 mptr.readIO();                          //读取数据，IO、舵机等,检查IO数据，输出对应IO数据
-               // writeWifi();
-               /* mptr.wheelMoveSpeedSet = speedTemp;//重新设定速度
-
-                if(mptr.wheelMoveSpeedSet > mptr.wheelMoveSpeedSetMax)
-                    mptr.wheelMoveSpeedSet = mptr.wheelMoveSpeedSetMax;
-                */
 
                 mptr.checkIO();
-//                ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf));
-//                ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf_last));
-//                ui->CommunicationEdit->append(tr("%1\t%2\t%3").arg(mptr.yawTarget).arg(mptr.yaw).arg(mptr.yawInt));
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.Td_SpeedSet).arg(mptr.wheelRearAngle));
-                //ui->CommunicationEdit->append(tr("%1\t").arg(mptr.wheelAngle));
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.delta_s).arg(mptr.yaw_error));
-
+                ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf));
+                ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf_last));
+                ui->CommunicationEdit->append(tr("%1\t%2\t%3").arg(mptr.yawTarget).arg(mptr.yaw).arg(mptr.yawInt));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.Td_SpeedSet).arg(mptr.wheelRearAngle));
+                ui->CommunicationEdit->append(tr("%1\t").arg(mptr.turn_flag));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.delta_s).arg(mptr.yaw_error));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.a).arg(mptr.b));
+                ui->CommunicationEdit->append(tr("%1\t%2\t%3").arg(mptr.Num_Turn).arg(mptr.wheelAngle).arg(mptr.num));
 //                write(mptr.fd2,mptr.readPositionData,sizeof(mptr.readPositionData));
 //                ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd2)).toHex());
 //                write(mptr.fd4,mptr.readPositionData,sizeof(mptr.readPositionData));
@@ -177,19 +159,13 @@ void MainWindow::systemOn(void)
                 //ui->CommunicationEdit->append(mptr.Flag_SpeedDe);
 
                 //ui->CommunicationEdit->append(tr("FrontAngleOffset: %1").arg(mptr.wheelFrontAngleOffset));
-                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Centre.X).arg(mptr.P_Centre.Y));
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_protection.X).arg(mptr.P_protection.Y));
 
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.Flag_SpeedDe).arg(mptr.Flag_SpeedAdd));
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVLocation.X).arg(mptr.AGVLocation.Y));
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.a).arg(mptr.b));
-//                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.num).arg(mptr.wheelAngle));
+                //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Target[mptr.num_AddSpeed].X).arg(mptr.P_Target[mptr.num_AddSpeed].Y));
+                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVLocation.X).arg(mptr.AGVLocation.Y));                
+
                 //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.QR_Code_Number).arg(mptr.Angle_QRtoCar));
-//                ui->read->append(tr("%1\t%2").arg(mptr.turn_flag).arg(mptr.direction_flag));
-//                ui->CommunicationEdit->append(tr("%1").arg(mptr.bufWifi));
-//                for(int i =0; i<mptr.numberOfStaEnd; i++)
-//                {
-//                    ui->CommunicationEdit->append((tr("%1\t%2").arg(mptr.start_end[i].X).arg(mptr.start_end[i].Y)));
-//                }
+                ui->read->append(tr("%1\t%2").arg(mptr.turn_flag).arg(mptr.direction_flag));
 
                 //ui->read->append(tr("%1\t").arg(mptr.turn_flag));
                 //ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.QR_Point[0].X).arg(mptr.QR_Point[0].Y));
@@ -203,7 +179,7 @@ void MainWindow::systemOn(void)
 				if(mptr.emergencyFlag == false)			//emergencyFlag目前不使用，可忽略
                 {
                     mptr.Speed_Adj();
-                    if (mptr.Td_SpeedSet>mptr.wheelMoveSpeedSetMax)
+                    if (fabs(mptr.Td_SpeedSet)>fabs(mptr.wheelMoveSpeedSetMax))
                         mptr.Td_SpeedSet = mptr.wheelMoveSpeedSetMax;
                     if(speedBefore != mptr.Td_SpeedSet)	//如果速度没变化不在对舵轮写速度。
 					{
@@ -236,34 +212,17 @@ void MainWindow::systemOn(void)
                 }
 
         }
-			else
-                break;
-        QApplication::processEvents(QEventLoop::AllEvents,1000);			//Qt任务队列等待，释放系统资源
-
-        if (mptr.breakFlag == true)												//手自变换时候，AGV停车
-        {   
-            mptr.Speed_Td_x1 = 0;
-            mptr.writeWheelSpeed(00,00,mptr.commanData);
-            write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
-            read(mptr.fd1,array,sizeof(array));
-
-            mptr.writeWheelSpeed(00,00,mptr.commanData);
-            write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
-            read(mptr.fd3,array,sizeof(array));
-
-            mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
-            write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
-
-            mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
-			write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
+        else
+        {
             break;
         }
+        QApplication::processEvents(QEventLoop::AllEvents,1000);			//Qt任务队列等待，释放系统资源
 
         t_2=QTime::currentTime().msec();
         if(t_2>t_1)
-            delta_t=t_2-t_1;
+            delta_t=t_2-t_1+0.2;
         else
-            delta_t=1000+t_2-t_1;
+            delta_t=1000+t_2-t_1+0.2;
 
         mptr.AGVLocation.X=mptr.AGVLocation.X+mptr.AGVSpeeds.X*delta_t/1000;        //  航位推算
         mptr.AGVLocation.Y=mptr.AGVLocation.Y+mptr.AGVSpeeds.Y*delta_t/1000;
@@ -285,19 +244,7 @@ void MainWindow::systemOn(void)
             //mptr.buf.clear();
         }
         /**         路径规划        **/
-        /*****
-        if(mptr.direction_flag==true)
-        {
-            R=mptr.Go2 (mptr.P_Target[mptr.num]);
-        }
-        else
-        {
-
-            R=mptr.Go2 (mptr.P_Target[mptr.num]);
-        }
-        ******/
-
-         R=mptr.Go2(mptr.P_Target[mptr.num]);
+        R=mptr.Go2(mptr.P_Target[mptr.num]);
 
         if(mptr.direction_flag==true)
         {
@@ -305,7 +252,8 @@ void MainWindow::systemOn(void)
                 if(mptr.turn_flag==false)
                 {
                     //mptr.breakFlag = true;
-                    mptr.num = 4;
+                  //  mptr.num = 4;  //为什么不是3？？？
+                    mptr.num_AddSpeed = 3;
                 }
         }
         else
@@ -315,71 +263,54 @@ void MainWindow::systemOn(void)
 
         if(mptr.turn_flag==true)
         {
-            if(mptr.direction_flag==true)
-            {
-//                mptr.P_Centre = mptr.turnCenter[mptr.countOfTurnCentre];      //待测试
-                if(mptr.num==3)
-                mptr.P_Centre={-2,2};
-                if(mptr.num==8)
-                mptr.P_Centre={-6,6};
-                if(mptr.num==10)
-                mptr.P_Centre={-6,7};
 
-            }
-            else
-            {
-//                mptr.P_Centre = mptr.turnCenter[mptr.countOfTurnCentre];      //待测试
-                if(mptr.num==2)
-                mptr.P_Centre={-2,2};
-                if(mptr.num==7)
-                mptr.P_Centre={-6,6};
-                if(mptr.num==9)
-                mptr.P_Centre={-6,7};
 
-            }
-            /*
-            if(mptr.direction_flag==true)
-            {
-
-                if(mptr.num==8)
+            if(mptr.num==8)
                 mptr.P_Centre={-2,7};
-                if(mptr.num==13)
+            if(mptr.num==13)
                 mptr.P_Centre={-6,7};
-                if(mptr.num==19)
+            if(mptr.num==19)
                 mptr.P_Centre={-6,2};
-                if(mptr.num==24)
+            if(mptr.num==24)
                 mptr.P_Centre={-2,2};
-            }
-            else
-            {
-                if(mptr.num==7)
-                mptr.P_Centre={-2,7};
-                if(mptr.num==12)
-                mptr.P_Centre={-6,7};
-                if(mptr.num==18)
-                mptr.P_Centre={-6,2};
-
-                //if(mptr.num==23)
-                //mptr.P_Centre={-2,2};
-            }
-            */
-
 
             mptr.delta_s=mptr.Position_Turn_crol (mptr.P_Centre,mptr.P_Target[mptr.num],mptr.AGVLocation,4);
         }
         else
         {
-            //mptr.delta_s=mptr.Straight_Line (mptr.AGVLocation,mptr.P_Target[mptr.num][0],mptr.P_Target[mptr.num][1]);
+            mptr.delta_s=mptr.Straight_Line (mptr.AGVLocation,mptr.P_Target[mptr.num-1],mptr.P_Target[mptr.num]);
+/*************
             if(mptr.direction_flag==true)
             {
                 mptr.delta_s=mptr.Straight_Line (mptr.AGVLocation,mptr.P_Target[mptr.num-1],mptr.P_Target[mptr.num]);
             }
             else
             {
+
                 mptr.delta_s=mptr.Straight_Line (mptr.AGVLocation,mptr.P_Target[mptr.num+1],mptr.P_Target[mptr.num]);
             }
+*************/
+        }
+    }
+    while(1)
+    {
+        if(fabs(mptr.Speed_Td_x1)>0.01)
+        {
+            mptr.Speed_h=0.01;
+            mptr.Speed_Adj();
+            if (mptr.Td_SpeedSet>mptr.wheelMoveSpeedSetMax)
+                mptr.Td_SpeedSet = mptr.wheelMoveSpeedSetMax;
+
+             mptr.writeWheelSpeed(mptr.Td_SpeedSet,00,mptr.commanData);	//生成速度设置报文
+             write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));			//发送速度设置报文到驱动器
+             read(mptr.fd1,array,sizeof(array));									//读取串口缓冲区，主要目的是为了清除缓冲区为之后读取速度留下空间。
+             mptr.writeWheelSpeed(mptr.Td_SpeedSet,00,mptr.commanData);
+             write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+             read(mptr.fd3,array,sizeof(array));
 
         }
+        else
+            break;
     }
 	mptr.writeWheelSpeed(00,00,mptr.commanData);								//任务队列完成后，停车
 	write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
@@ -393,7 +324,6 @@ void MainWindow::systemOn(void)
 	mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
 	write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
 	ui->CommunicationEdit->append("Halt Success!");
-    writeWifi();
 	mptr.sickA = 0;
     mptr.sickB = 0;
     mptr.sickC = 0;
@@ -409,166 +339,8 @@ void MainWindow::ReadData ()
          mptr.buf = buffer;
          //buffer.clear();
      }
+    tcpSocket->write(mptr.startReadGun);
 
-}
-
-/**********************    断开重新连接上位机   ***********************/
-void MainWindow::reconnect()
-{
-    mptr.TCPconnectFlag = false;
-
-    tcpSocket1 = new QTcpSocket(this);
-    QString ip1= "10.0.0.2"; //"192.168.10.12";
-    //QString ip="192.168.10.11";
-    //QString ip="10.0.0.3";
-    qint16 port1=6666;
-    tcpSocket1->connectToHost(ip1,port1);
-    connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
-    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
-    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
-
-    ui->TCPStatusLabel->setText("上位机连接失败，手动重连");
-
-}
-
-void MainWindow::TCPconnected()
-{
-    mptr.TCPconnectFlag = true;
-    ui->TCPStatusLabel->setText("上位机连接成功");
-}
-
-/**********************     读取wifi   *********************************/
-void MainWindow::readWifi()
-{
-    int init=1;         //初值
-    int target_angel=0;
-    int u,v;
-    static QString bufTemp;
-    int lengthall =0;
-    QString temp;
-    QString buffer = tcpSocket1->readAll();
-//    std::string bufferStdString = (buffer.toStdString());
-//    QString bufferString;
-//    bufferString.fromStdString(bufferStdString);
-    ui->CommunicationEdit->append(buffer);
-
-    //QByteArray splitCoeffcient= ":";
-    //tcpSocket 清除缓冲区
-    if((buffer != bufTemp))
-    {
-        bufTemp = buffer;
-        mptr.bufWifi = buffer;
-        lengthall=buffer.length();
-        //信息校验有问题，需要请求重发
-        if(buffer=="")
-        {
-           // QMessageBox::information(NULL,QString("提示"),QString("无历史路径，请重新设置"));
-        }
-        else
-        {
-            for(int i=0;i<lengthall;i++)
-            {
-                if(buffer.mid(i,1)==":")
-                    mptr.numberOfStaEnd++;
-            }
-
-            for(int i=0;i<(mptr.numberOfStaEnd-2)/4;i++)
-            {
-                temp=buffer.split(":")[2+4*i];
-                mptr.start_end[2*i].X=temp.toInt();
-                temp=buffer.split(":")[3+4*i];
-                mptr.start_end[2*i].Y=temp.toInt();
-                temp=buffer.split(":")[4+4*i];
-                mptr.start_end[2*i+1].X=temp.toInt();
-                temp=buffer.split(":")[5+4*i];
-                mptr.start_end[2*i+1].Y=temp.toInt();
-            }
-            mptr.numberOfStaEnd = (mptr.numberOfStaEnd-2)/2;//起点终点的数量
-            for(int i=0; i<mptr.numberOfStaEnd/2; i++)
-            {
-                init = mptr.Trace(mptr.start_end[2*i].X, mptr.start_end[2*i].Y, mptr.start_end[2*i+1].X, mptr.start_end[2*i+1].Y,init);
-            }
-            for(int i =0; i<init-1; i++)              //显示
-            {
-                ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.P_Target2[i].X).arg(mptr.P_Target2[i].Y));
-            }
-
-            for(int i=1; i<mptr.numberOfStaEnd-2; i+=2)                     //自动生成圆心
-            {
-                if(mptr.start_end[i+1].X== mptr.start_end[i+2].X)                   //计算圆心角
-                {
-                    if(mptr.start_end[i+2].Y> mptr.start_end[i+1].Y)
-                        target_angel=90;
-                    else target_angel=270;
-                }
-                if(mptr.start_end[i+1].Y==mptr.start_end[i+2].Y)
-                {
-                    if(mptr.start_end[i+2].X>mptr.start_end[i+1].X)
-                        target_angel=0;
-                    else target_angel=180;
-                }
-                u=0, v=0;//定义转弯向量（0,2）经旋转的向量
-                if(cos(target_angel*pi/180)<1.1&&cos(target_angel*pi/180)>0.9)
-                    u = 2*1;
-                if(cos(target_angel*pi/180)<0.1&&cos(target_angel*pi/180)>-0.1)
-                    u = 2*0;
-                if(cos(target_angel*pi/180)<-0.9&&cos(target_angel*pi/180)>-1.1)
-                    u = 2*(-1);
-                if(sin(target_angel*pi/180)<1.1&&sin(target_angel*pi/180)>0.9)
-                    v = 2*1;
-                if(sin(target_angel*pi/180)<0.1&&sin(target_angel*pi/180)>-0.1)
-                    v = 2*0;
-                if(sin(target_angel*pi/180)<-0.9&&sin(target_angel*pi/180)>-1.1)
-                    v = 2*(-1);
-               // u = 2*cos(target_angel*pi/180);
-                //v = 2*sin(target_angel*pi/180);
-                mptr.turnCenter[(i-1)/2].X = mptr.start_end[i-1].X + u;
-                mptr.turnCenter[(i-1)/2].Y = mptr.start_end[i-1].Y + v;
-
-                mptr.numberOfTurnCentre++;
-
-//                center_x？？？？？？？？ = start_end[i-1].X + u;//计算转弯圆心
-//                center_y ？？？？？？？？？？？？？？？？= start_end[i-1].Y + v;
-
-            }
-
-        }
-    }
-        //tcpSocket 清除缓冲区
-}
-
-/**************************  写WiFi （将AGV的信息拼接字符串之后送到上位机）  ***********************/
-void MainWindow::writeWifi(void)
-{
-    //L:sta:x:y:theta:speed:baterry:voltage:current:end
-
-    QString intergrate="sta:";
-    QString addTemp;
-    //addTemp.setNum((int)mptr.AGVSpeed);
-    intergrate += addTemp.setNum(mptr.AGVLocation.X) + ":" +addTemp.setNum((int)mptr.AGVLocation.Y) + ":";
-    intergrate += addTemp.setNum((int)mptr.yaw) + ":";
-    intergrate += addTemp.setNum((int)mptr.AGVSpeed) + ":";
-    intergrate += addTemp.setNum(mptr.batteryCollum) + ":" + addTemp.setNum(mptr.batteryVoltage) + ":"
-            + addTemp.setNum(mptr.batteryCurrent) + ":";
-    intergrate += "end";
-
-    int length = intergrate.length();
-    intergrate.prepend(":");
-    intergrate.prepend(addTemp.setNum(length));
-
-    ui->CommunicationEdit->append(intergrate);
-
-    QByteArray message;
-    message = intergrate.toLocal8Bit();
-
-//    QDataStream out(&message,QIODevice::ReadWrite);
-//    out.setVersion(QDataStream::Qt_5_0);
-//    out<<intergrate;
-    tcpSocket1->write(message);
-
-
-
-//    tcpSocket1->write(intergrate);
 }
 /***********************前进按钮，按压前进，速度为设定值***************************************************************************************/
 void MainWindow::on_forwardButton_pressed()
@@ -935,7 +707,7 @@ int MainWindow::ConvertHexChar(char ch)
     else return (-1);
 }
 
-/*********************************************清除显示区*****************************************************************/
+/*********************************************清楚显示区*****************************************************************/
 void MainWindow::on_cleanCommunicationButton_clicked()
 {
     ui->CommunicationEdit->clear();
@@ -1047,7 +819,7 @@ void MainWindow::on_stopAutorunButton_clicked()
     mptr.delayTimeSet = 5;
 //    mptr.wheelFrontAngleOffset = 0;
 //    mptr.wheelRearAngleOffset = 0;
-    mptr.wheelMoveSpeedSetMax = 2;
+    mptr.wheelMoveSpeedSetMax = 2400;
     ui->addressEdit->setText(s.setNum(mptr.wheelAddress));
     ui->speedEdit->setText(s.setNum(mptr.wheelMoveSpeedSet));
     ui->angleEdit->setText(s.setNum(mptr.wheelAngle));
@@ -1079,6 +851,48 @@ void MainWindow::wheelZeroCalibration()
     write(mptr.fd2,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
     write(mptr.fd3,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd3,array,sizeof(array));//fflush(stdout);
     write(mptr.fd4,mptr.enableBridgeCommand,sizeof(mptr.enableBridgeCommand));read(mptr.fd4,array,sizeof(array));//fflush(stdout);
+
+//    ui->CommunicationEdit->append("left detect!");
+//    while((limitFlag2left==false)||(limitFlag4left==false))
+//    {
+//        if(mptr.breakFlag == false)
+//        {
+//            mptr.readIO();
+//            do{
+//                steerFrontLimitTemp = mptr.steerFrontLimitDetect;
+//                steerBackLimitTemp = mptr.steerBackLimitDetect2;
+//                mptr.readIO();
+//            }while((steerFrontLimitTemp != mptr.steerFrontLimitDetect) && (steerBackLimitTemp != mptr.steerBackLimitDetect2));
+//            if(mptr.steerFrontLimitDetect == false)
+//            {
+//                mptr.wheelAngle2 -= 1;
+//                mptr.writeWheelPosition(00,mptr.wheelAngle2);
+//                write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));//fflush(stdout);
+//                limitFlag2left =false;
+//            }
+//            else
+//            {
+//                frontLeftTemp = mptr.wheelAngle2 ;
+//                limitFlag2left = true;
+//            }
+//            if(mptr.steerBackLimitDetect2 == false)
+//            {
+//                mptr.wheelAngle4 -= 1;
+//                mptr.writeWheelPosition(00,mptr.wheelAngle4);
+//                write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
+//                limitFlag4left = false;
+//            }
+//            else
+//            {
+//                backLeftTemp = mptr.wheelAngle4;
+//                limitFlag4left = true;
+//            }
+//            mptr.delayTimeMsecs(100);
+//        }
+//        else
+//            break;
+
+//    }
 
     ui->CommunicationEdit->append("right detect!");
     while((limitFlag2==false) || (limitFlag4==false))
@@ -1433,17 +1247,4 @@ void MainWindow::on_label_3_linkActivated(const QString &link)
 void MainWindow::on_kdSpinBox_editingFinished()
 {
 
-}
-
-void MainWindow::on_reconnectButton_clicked()
-{
-    tcpSocket1 = new QTcpSocket(this);
-    QString ip1= "10.0.0.2"; //"192.168.10.12";
-    //QString ip="192.168.10.11";
-    //QString ip="10.0.0.3";
-    qint16 port1=6666;
-    tcpSocket1->connectToHost(ip1,port1);
-    connect(tcpSocket1,SIGNAL(readyRead()),this,SLOT(readWifi()));
-    connect(tcpSocket1,SIGNAL(connected()),this,SLOT(TCPconnected()));
-    connect(tcpSocket1,SIGNAL(disconnected()),this,SLOT(reconnect()));
 }

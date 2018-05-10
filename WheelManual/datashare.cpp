@@ -52,7 +52,7 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
     getSpeedString=0;								//放弃不用
     wheelAddress = 0;								//舵机驱动器地址
     wheelMoveSpeedSet=0;							//舵机驱动器速度
-    wheelMoveSpeedSetMax = 1;					//舵机驱动器最大速度
+    wheelMoveSpeedSetMax = 0.8;					//舵机驱动器最大速度
     wheelAngle = 0;									//舵机打角
     delayTimeSet = 5;								//延时参数（改为232后放弃不用了）
     wheelFrontAngleOffset = 0;						//前轮打角偏移量
@@ -160,7 +160,7 @@ void Datashare::writeAccessToDrive(int address)      //  give up
 }
 
 /*************************生成桥使能报文（可以弃用了）*******************************************************************************************/
-void Datashare::enableBridge(int address)            //  弃用
+void Datashare::enableBridge(int address)            //  give up
 {
     enableData[0] = 0xa5;
     enableData[1] = address & 255;
@@ -195,7 +195,7 @@ void Datashare::enableBridge(int address)            //  弃用
 }
 
 /***************************生成桥断连报文（可以弃用了）*****************************************************************************************/
-void Datashare::disableBridge(int address)           //  弃用
+void Datashare::disableBridge(int address)           //  give up
 {
     disableData[0] = 0xa5;
     disableData[1] = address & 255;
@@ -267,7 +267,7 @@ void Datashare::writeWheelCurrent(int inputArea, double currentAMPS)
 }
 
 /********************************生成读电流报文************************************************************************************/
-void Datashare::readWheelCurrent(int address)        // 弃用
+void Datashare::readWheelCurrent(int address)        // give up
 {
     readCurrentData[0] = 0xa5;
     readCurrentData[1] = address & 255;
@@ -289,7 +289,7 @@ void Datashare::readWheelCurrent(int address)        // 弃用
 }
 
 /*********************************生成写速度报文***********************************************************************************/
-void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //弃用
+void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //give up
 {
     int speed;
     speed = (int) (speedREV * 17801.1941*60);//4000 / 60 * 131072 / 20000 + 0.5;
@@ -325,7 +325,7 @@ void Datashare::writeWheelSpeed(int inputArea, double speedREV)          //弃�
 }
 
 /*****************************生成读速度报文***************************************************************************************/
-void Datashare::readWheelSpeed(int address)          // 弃用
+void Datashare::readWheelSpeed(int address)          // give up
 {
     readSpeedData[0] = 0xa5;
     readSpeedData[1] = address & 255;
@@ -405,7 +405,7 @@ void Datashare::writeWheelPosition(int inputArea, double positonANGLE)
 }
 
 /**********************************生成读取位置报文（可以弃用了）**********************************************************************************/
-void Datashare::readWheelPositon(int address)       //弃用
+void Datashare::readWheelPositon(int address)       //give up
 {
     readPositionData[0] = 0xa5;
     readPositionData[1] = address & 255;
@@ -449,7 +449,7 @@ double Datashare::convertTelegramHex2Angle(unsigned char array[])
 }
 
 /**********************************报文检验函数（可以弃用了）**********************************************************************************/
-QString Datashare::checkWheelCommunication(int filedestiny)//调试用
+QString Datashare::checkWheelCommunication(int filedestiny)//need to fullfill
 {
     unsigned char array[50]={0};
     int numberOFRead;
@@ -720,10 +720,9 @@ void Datashare::readIO()
         if(yaw<0)
             yaw+=360;
     }
-	if (yawFlag == true)
-	{
-        if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
-	}
+
+   // if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
+
     AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2 * cos(wheelRearAngle*3.14159/180);
     AGVSpeeds.X=AGVSpeed*cos((yaw-yawInt)*3.14159/180);
     AGVSpeeds.Y=AGVSpeed*sin((yaw-yawInt)*3.14159/180);
@@ -784,9 +783,9 @@ void Datashare::checkIO()
 {
     int array[20] = {0};
     /*********************************
-    if (sickWarningSpaceAlert && (!sickFalse))          //增加限速的东西，和师兄对接
+    if (sickWarningSpaceAlert && (!sickFalse))
     {
-        wheelMoveSpeedSetMax -=0.1; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
+        wheelMoveSpeedSetMax -=800; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
         systemOnLight = 0;
         warmingLight = 1;
         alarmLight = 0;
@@ -795,7 +794,7 @@ void Datashare::checkIO()
 
     if ((!sickWarningSpaceAlert) && (!sickFalse))
     {
-        wheelMoveSpeedSetMax +=0.1; (wheelMoveSpeedSetMax>2) ? wheelMoveSpeedSetMax = 2400 : 0;
+        wheelMoveSpeedSetMax +=800; (wheelMoveSpeedSetMax>2400) ? wheelMoveSpeedSetMax = 2400 : 0;
         systemOnLight = 1;
         warmingLight = 0;
         alarmLight = 0;
@@ -846,27 +845,42 @@ void Datashare::checkIO()
     }
     **/
     //wheelAngle = Position_PID2 (delta_s,turn_flag)+Position_PID(yaw, yawTarget);
-    if(turn_flag==false)
+    if(turn_flag==false)  //直道
     {
         a = Position_PID2 (delta_s,turn_flag);
         b = Position_PID(yaw, yawTarget);
         if(fabs(delta_s)>=0.012)
         {
-            wheelAngle = 1.6*a+0.4*b;
+            //if( (a>0 && b>0) || (a<0 && b<0) )
+            //   wheelAngle = 1.7*a + 0.2*b;
+            //else
+               wheelAngle = 1.6*a+0.4*b;
         }
         else
         {
             wheelAngle = a+b;
         }
+        if(wheelAngle<-12)
+            wheelAngle=-12;
+        if(wheelAngle>12)
+            wheelAngle=12;
     }
     else
     {
         wheelAngle=Position_PID2 (delta_s,turn_flag);
+        if(wheelAngle<-45)
+            wheelAngle=-45;
+        if(wheelAngle>45)
+            wheelAngle=45;
     }
-    if(wheelAngle<-45)
-        wheelAngle=-45;
-    if(wheelAngle>45)
-        wheelAngle=45;
+
+
+    if( ((AGVLocation.X-P_Stop.X)*(AGVLocation.X-P_Stop.X)+(AGVLocation.Y-P_Stop.Y)*(AGVLocation.Y-P_Stop.Y)) <= 0.2) //到起点就不打角
+    {
+        wheelAngle = 0;
+    }
+
+
     //wheelAngle = Position_PID(yaw, yawTarget);
 
     writeWheelPosition(00,-wheelAngle + wheelFrontAngleOffset);
@@ -1310,7 +1324,7 @@ double Datashare::Position_PID (double Encoder,double Target)
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
      */
-     if(fabs(KP_Angle*Bias*10)<fabs(KD_Angle*(Bias-Last_Bias)))
+     if(fabs(KP_Angle*Bias*8)<fabs(KD_Angle*(Bias-Last_Bias)))
      {
          Pwm=KP_Angle*Bias;
      }
@@ -1318,11 +1332,11 @@ double Datashare::Position_PID (double Encoder,double Target)
      {
          Pwm=KP_Angle*Bias+KD_Angle*(Bias-Last_Bias);
      }
-     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //
-     Last_Bias=Bias;                                       //
+     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+     Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
      if (Pwm>45) Pwm = 45;
-     if (Pwm<-45) Pwm = -45;                                //不是已经换成30了么？是否要换成±30？？
-     return Pwm;                                           //
+     if (Pwm<-45) Pwm = -45;
+     return Pwm;                                           //ÔöÁ¿Êä³ö
 }
 
 /***************************************   QR code information processinng  *********************************/
@@ -1438,6 +1452,9 @@ double Datashare::Information_Corrective()
     //static int Target_Location_Last=-1;  //上次的位置标号
     int Target_Location=0;               //位置标号
     int Target_Number=0;                 //序列号
+    int Number_Flag;
+    double Dis_Out;
+    double Dis_In;
     double Side_Twocode=0;               //二维码图像边长
     double Angle_Error=0;                //角度偏差
     double Yaw_Error=0;                  //惯导漂移值
@@ -1467,7 +1484,21 @@ double Datashare::Information_Corrective()
     //Chord_Length = 2*Distance_QR_CarCenter*sin((Angle_Error/2+1.8)*3.14159/180);
     //Image_Error.X += Chord_Length;
     //Image_Error.Y -= Chord_Length;
-    switch(Num_Turn/4)
+    if(turn_flag == true)
+    {
+        Dis_In=(AGVLocation.X-P_Target[num-1].X)*(AGVLocation.X-P_Target[num-1].X)+(AGVLocation.Y-P_Target[num-1].Y)*(AGVLocation.Y-P_Target[num-1].Y);
+        Dis_Out=(AGVLocation.X-P_Target[num].X)*(AGVLocation.X-P_Target[num].X)+(AGVLocation.Y-P_Target[num].Y)*(AGVLocation.Y-P_Target[num].Y);
+        if(Dis_In < Dis_Out)  //如果靠近入弯点就按入弯点方向校正
+        {
+            Number_Flag = (4+Num_Turn-1)%4;
+        }
+        else
+            Number_Flag = Num_Turn%4;
+    }
+    else
+        Number_Flag = Num_Turn%4;
+
+    switch(Number_Flag)
     {
       case 0:
             {
@@ -1499,6 +1530,7 @@ double Datashare::Information_Corrective()
     Error_Position->Y-=Image_Error.Y;
     delta_TwoCode.X = Error_Position->X*cos((yawTarget-yawInt-90)*3.14159/180)-Error_Position->Y*sin((yawTarget-yawInt-90)*3.14159/180);
     delta_TwoCode.Y = Error_Position->X*sin((yawTarget-yawInt-90)*3.14159/180)+Error_Position->Y*cos((yawTarget-yawInt-90)*3.14159/180);
+/**************
     if(direction_flag==true)
     {
         for(int i=num-1;i<=7;i++)
@@ -1535,8 +1567,9 @@ double Datashare::Information_Corrective()
             }
         }
     }
+************/
 
-    if(Flag_On_Road==true)
+//    if(Flag_On_Road==true)
     {
         AGVLocation.X = P_TwoCode[Target_Location].X+delta_TwoCode.X;
         AGVLocation.Y = P_TwoCode[Target_Location].Y+delta_TwoCode.Y;
@@ -1545,10 +1578,12 @@ double Datashare::Information_Corrective()
 
 /*角度*/
     Angle_Error = Angle_QRtoCar-180-Num_Turn*90;
-    if(Flag_On_Road==true)
+//    if(Flag_On_Road==true)   //为什么角度校正要是路径上的点？？？
     {
         if(turn_flag==false)
         {
+            P_protection.X = P_TwoCode[Target_Location].X;
+            P_protection.Y = P_TwoCode[Target_Location].Y;
             yawInt = yaw-90-Angle_Error-0.2-Num_Turn*90;//坐标系的重建
             while(yawInt<0||yawInt>=360)
             {
@@ -1557,7 +1592,8 @@ double Datashare::Information_Corrective()
                 if(yawInt>360)
                     yawInt-=360;
             }
-            yawTarget = yaw - Angle_Error-0.2;//目标方向修正
+            //if(fabs(Angle_Error)<25) //对错角滤波
+                yawTarget = yaw - Angle_Error-0.2;//目标方向修正
             while(yawTarget<0||yawTarget>=360)
             {
                 if(yawTarget<0)
@@ -1618,12 +1654,31 @@ double Datashare::Position_PID2 (double delta,bool flag)
      double Pwm=0;
      static double Last_delta=0,Integral_delta=0;
      static double Last_delta_turn=0,Integral_delta_turn=0;
+     static double Last_Pwm=0;
      double KP_Line;
 
 
      if(flag==false)
      {
-         KP_Line=(delta*delta)*6500+KP;
+         if(Td_SpeedSet<=0.35)
+         {
+             KP=16;
+             KD=1250;
+             if(fabs(delta)<0.28)
+                KP_Line=(delta*delta)*6500+KP;
+             else
+                KP_Line=(delta*delta)*8000+KP;
+         }
+         else
+         {
+             KP=10;
+             KD=1200;
+             if(fabs(delta)<0.28)
+                KP_Line=(delta*delta)*6000+KP;
+             else
+                KP_Line=(delta*delta)*7000+KP;
+         }
+
          Integral_delta+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
          if(Integral_delta>120)
              Integral_delta=120;
@@ -1650,14 +1705,19 @@ double Datashare::Position_PID2 (double delta,bool flag)
              Integral_delta_turn=300;
          if(Integral_delta_turn<-300)
              Integral_delta_turn=-300;
-         //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //
-         Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //
+         //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Last_delta_turn=delta;
          Last_delta=0;
      }
+//     if(fabs(Last_Pwm-Pwm)>3)
+//     {
+//            Pwm = (Last_Pwm + Pwm)/2;
+//     }
+     Last_Pwm = Pwm;
      if (Pwm>45) Pwm = 45;
-     if (Pwm<-45) Pwm = -45;                               //角度换成30？？？
-     return Pwm;                                           //
+     if (Pwm<-45) Pwm = -45;
+     return Pwm;                                           //ÔöÁ¿Êä³ö
 }
 /***************************************   圆周运动的圆心计算函数       **************************************************/
 /**
@@ -1844,14 +1904,8 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
     Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
     if(Distance_NowToTar_sq<=0.1)//到达目标点，精度为30cm(出弯点)
     {
-        if(direction_flag==true)
-        {
-            num++;
-        }
-        else
-        {
-            num--;
-        }
+
+       num++;
        turn_flag=false;
        num_AddSpeed = num;
 
@@ -2004,8 +2058,9 @@ double Datashare::Go2 (Position P_Targets )
 {
    double Dis_NowToTar=0;
    double Dis_SpeedAdd = 0;
-   double Dis_Stop = 0;
-
+   double Dis_Stop = 0;  //到停车点停车
+   double Dis_stop1 = 0;  //检测不到二维码停车
+   double Distance_stop=0;
    //int circle_N=0;
    double R=0;
    bool Straight_Bend = false;
@@ -2018,22 +2073,50 @@ double Datashare::Go2 (Position P_Targets )
 
   Dis_NowToTar=(AGVLocation.X-P_Targets.X)*(AGVLocation.X-P_Targets.X)+(AGVLocation.Y-P_Targets.Y)*(AGVLocation.Y-P_Targets.Y);
   Dis_Stop=(AGVLocation.X-P_Stop.X)*(AGVLocation.X-P_Stop.X)+(AGVLocation.Y-P_Stop.Y)*(AGVLocation.Y-P_Stop.Y);
+  Dis_stop1 = (AGVLocation.X-P_protection.X)*(AGVLocation.X-P_protection.X)+(AGVLocation.Y-P_protection.Y)*(AGVLocation.Y-P_protection.Y);
+
   Dis_SpeedAdd = (AGVLocation.X-P_Target[num_AddSpeed].X)*(AGVLocation.X-P_Target[num_AddSpeed].X)+(AGVLocation.Y-P_Target[num_AddSpeed].Y)*(AGVLocation.Y-P_Target[num_AddSpeed].Y);
-  if(Dis_SpeedAdd <= 0.01)  //出弯一个点后加速
+
+  if((Dis_SpeedAdd <= 0.01) && (turn_flag == false))  //出弯一个点后加速
   {
        Flag_SpeedAdd = true;
        Flag_SpeedDe = false;
        num_AddSpeed = 29;
   }
 
-  if(Dis_Stop <= 0.009)
+  if(Dis_stop1 >= 6.25) //检测不到二维码停车
   {
-      breakFlag = true; //停车
+      //wheelMoveSpeedSet = 0;
+  }
+
+  if(Dis_Stop<=0.01)
+  {
+      switch((Num_Turn+4)%2) //确定停车距离
+      {
+          case 0:
+          {
+              Distance_stop = AGVLocation.X*AGVLocation.X+0.00012;
+              break;
+          }
+          case 1:
+          {
+              Distance_stop = AGVLocation.Y*AGVLocation.Y+0.00012;
+              break;
+          }
+        default: break;
+      }
+
+  }
+  if(Dis_Stop <= Distance_stop) //停车
+  {
+
+      breakFlag = true;
+      wheelMoveSpeedSet = 0;
       Flag_SpeedAdd = false;
       Flag_SpeedDe = false;
       Flag_Stop = false;
-
   }
+
   if(turn_flag==true)
       a=0.04;
   else
@@ -2044,9 +2127,6 @@ double Datashare::Go2 (Position P_Targets )
       if(Dis_NowToTar<a)//直线点以及入弯点精度
       {
               //num++;
-              if(direction_flag==true)
-              {
-
                   for(int i=0;i<=num;i++)
                   {
                       if(P_Target[num+1].X==P_Stop.X)
@@ -2073,6 +2153,8 @@ double Datashare::Go2 (Position P_Targets )
                       {
                           if(P_Target[num].Y==P_Target3[i].Y)
                           {
+                              P_protection.X = P_Target[num+1].X;
+                              P_protection.Y = P_Target[num+1].Y;
                               Straight_Bend =true;
                               break;
                           }
@@ -2106,10 +2188,6 @@ double Datashare::Go2 (Position P_Targets )
                       if(yawTarget<0)
                           yawTarget+=360;
                       turn_flag=true;
-                      if(direction_flag==true)
-                          countOfTurnCentre++;
-                      else
-                          countOfTurnCentre--;
                   }
                   else
                   {
@@ -2122,85 +2200,8 @@ double Datashare::Go2 (Position P_Targets )
                   }
                   if(turn_flag==true&&Straight_Bend==true)//弯道入口处
                   {
-                      num++;
+                     num++;
                   }
-              }
-              else
-              {
-                  for(int i=0;i<=3;i++)
-                  {
-                      if(P_Target[num-1].X==P_Stop.X)
-                      {
-                          if(P_Target[num-1].Y==P_Stop.Y)
-                          {
-                              Flag_SpeedAdd = false;
-                              Flag_SpeedDe = false;
-                              Flag_Stop = true;  //停车前减速标志位
-                          }
-                      }
-
-                      if(P_Target[num-1].X==P_Target4[i].X)
-                      {
-                          if(P_Target[num-1].Y==P_Target4[i].Y)
-                          {
-                              Flag_SpeedAdd = false;
-                              Flag_SpeedDe = true;
-                              break;
-                          }
-                      }
-
-                      if(P_Target[num].X==P_Target4[i].X)
-                      {
-                          if(P_Target[num].Y==P_Target4[i].Y)
-                          {
-                              Straight_Bend =true;
-                              break;
-                          }
-                      }
-                  }
-                  if(Straight_Bend==true)
-                  {
-                        Vector_Now.X = P_Target[num].X- P_Target[num+1].X;
-                        Vector_Now.Y = P_Target[num].Y- P_Target[num+1].Y;
-                        Vector_Now.Z = 0;
-                        Vector_NowTar.X = P_Target[num-1].X- P_Target[num].X;
-                        Vector_NowTar.Y = P_Target[num-1].Y- P_Target[num].Y;
-                        Vector_NowTar.Z = 0;
-                        Vector_Cross_Product.Z = Vector_Now.X*Vector_NowTar.Y-Vector_Now.Y*Vector_NowTar.X;
-                        if(Vector_Cross_Product.Z>0)
-                        {
-                            yawTarget_Last = yawTarget;
-                            Num_Turn+=1;
-                           yawTarget+=90;
-                        }
-                        if(Vector_Cross_Product.Z<0)
-                        {
-                            yawTarget_Last = yawTarget;
-                            Num_Turn-=1;
-                           yawTarget-=90;
-                        }
-                      //yawTarget+=(90);
-                      //Angle_Bend+=90;
-                      if(yawTarget>360)
-                         yawTarget-=360;
-                      if(yawTarget<0)
-                          yawTarget+=360;
-                      turn_flag=true;
-                  }
-                  else
-                  {
-                      //num++;
-                      //turn_flag=false;
-                  }
-                  if(turn_flag!=true)//位置不能变
-                  {
-                     num--;
-                  }
-                  if(turn_flag==true&&Straight_Bend==true)//弯道入口处
-                  {
-                      num--;
-                  }
-              }
 
               while(Num_Turn<0||Num_Turn>=4)
               {
@@ -2314,8 +2315,19 @@ float Datashare::fhan(float x1,float x2, float r, float h)
 //速度调节
 void Datashare::Speed_Adj(void)
 {
-    Speed_Td_x1 += Speed_h*Speed_Td_x2; //速度TD
-    Speed_Td_x2 += Speed_h* fhan(Speed_Td_x1-wheelMoveSpeedSet,Speed_Td_x2,Speed_r,Speed_h);
+    if(fabs(Speed_Td_x1-wheelMoveSpeedSet) < 0.01)  //最后给定速度值固定不变
+    {
+
+        Speed_Td_x1 = wheelMoveSpeedSet;
+        Speed_Td_x2 = 0;
+    }
+    else
+    {
+        Speed_Td_x1 += Speed_h*Speed_Td_x2; //速度TD
+        Speed_Td_x2 += Speed_h* fhan(Speed_Td_x1-wheelMoveSpeedSet,Speed_Td_x2,Speed_r,Speed_h);
+    }
+
+
     Td_SpeedSet= Speed_Td_x1;
 
     if(direction_flag == true)
@@ -2328,13 +2340,13 @@ void Datashare::Speed_Adj(void)
         {
             if(Flag_SpeedDe == true) //入弯减速
             {
-                wheelMoveSpeedSet = 0.2;
+                wheelMoveSpeedSet = 0.3;
                 Flag_SpeedDe = false;
             }
     
             if(Flag_SpeedAdd == true) //出弯加速
             {
-                wheelMoveSpeedSet = 0.4;
+                wheelMoveSpeedSet = 0.6;
                 Flag_SpeedAdd = false;
             }
         }
@@ -2350,7 +2362,7 @@ void Datashare::Speed_Adj(void)
         {
             if(Flag_SpeedDe == true) //入弯减速
             {
-                wheelMoveSpeedSet = -0.2;
+                wheelMoveSpeedSet = -0.3;
                 Flag_SpeedDe = false;
             }
 
@@ -2365,45 +2377,130 @@ void Datashare::Speed_Adj(void)
 
 }
 
+void Datashare::Code_Init()
+{
+    int Target_Location;
+    int i=0;
+    unsigned char arrayTemp[50];
+
+    Speed_h=0.03;
+    yaw_error = 0;
+    if(buf!=buf_last)//此处加扫描到二维码的判断信息
+   {
+        if(buf!=NULL)
+        {
+            QR_Flag=Two_bar_codes_Pro2(buf);
+        }
+   }
+   if(QR_Flag==true)
+   {
+       //加上位置，角度处理函数
+       Target_Location=(QR_Code_Number-1)/4;
+       while(i<targetNumber)
+       {
+            if( ((P_Target[i].X-P_TwoCode[Target_Location].X)*(P_Target[i].X-P_TwoCode[Target_Location].X)+(P_Target[i].Y-P_TwoCode[Target_Location].Y)*(P_Target[i].Y-P_TwoCode[Target_Location].Y)) < 0.1)
+            {
+                AGVLocation.X = P_Target[i].X;
+                AGVLocation.Y = P_Target[i].Y;
+                num = i+1;               
+                break;
+            }
+            i++;
+       }
+
+       P_Stop.X = P_Target[targetNumber-1].X;
+       P_Stop.Y = P_Target[targetNumber-1].Y;
+       turn_flag = false;
+       num_AddSpeed =targetNumber-1; //出弯加速点出始化
+
+       if(fabs(Angle_QRtoCar-180)<20)//确定车身方向
+           Num_Turn = 0; //y正
+       else if(fabs(Angle_QRtoCar-90)<20)
+           Num_Turn = 3; //x正
+       else if(fabs(Angle_QRtoCar-270)<20)
+           Num_Turn = 1; //x负
+       else
+           Num_Turn = 2; //y负
+
+       switch((Num_Turn+4)%4)
+       {
+           case 0:
+           {
+              if(P_Target[num+1].Y-P_Target[num].Y>0)
+              {
+                  direction_flag = true;
+                  break;
+              }
+              if(P_Target[num+1].Y-P_Target[num].Y<0)
+              {
+                  direction_flag = false;
+                  break;
+              }
+           }
+           case 1:
+           {
+               if(P_Target[num+1].X-P_Target[num].X>0)
+               {
+                   direction_flag = false;
+                   break;
+               }
+               if(P_Target[num+1].X-P_Target[num].X<0)
+               {
+                   direction_flag = true;
+                   break;
+               }
+           }
+           case 2:
+           {
+              if(P_Target[num+1].Y-P_Target[num].Y>0)
+              {
+                  direction_flag = false;
+                  break;
+              }
+              if(P_Target[num+1].Y-P_Target[num].Y<0)
+              {
+                  direction_flag = true;
+                  break;
+              }
+           }
+           case 3:
+           {
+               if(P_Target[num+1].X-P_Target[num].X>0)
+               {
+                   direction_flag = true;
+                   break;
+               }
+               if(P_Target[num+1].X-P_Target[num].X<0)
+               {
+                   direction_flag = false;
+                   break;
+               }
+           }
+           default: break;
+       }
+
+       //读惯导角度
+       write(fd6,readInertialBuff,sizeof(readInertialBuff));
+       delayTimeMsecs(8);
+       int numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
+       //ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
+       yaw = angle_trans(arrayTemp[4],arrayTemp[3])-yaw_error;
+       while(yaw>=360||yaw<0)
+       {
+           if(yaw>=360)
+               yaw-=360;
+           if(yaw<0)
+               yaw+=360;
+       }
+
+       yaw_error = Information_Corrective();
+       QR_Flag=false;
+       buf_last=buf;
+       //mptr.buf.clear();
+   }
+
+}
+
 /*****************************************              ************************************************/
 
-/***********************        自动生成路径坐标函数        *****************************/
-int Datashare::Trace(int x1,int y1,int x2,int y2, int init )
-{
-    int num_cor;
-    int plus_dec;
-    if (x1 == x2)
-    {
-        num_cor = abs(y1 -y2);
-        P_Target2[init-1].X = x1;
-        P_Target2[init-1].Y = y1;
-        P_Target2[init-1+num_cor].X = x2;
-        P_Target2[init-1+num_cor].Y = y2;
-        if (y2 > y1)
-            plus_dec = 1;
-        else plus_dec = -1;
-        for (int i = init; i <init-1+ num_cor; i++)
-        {
-            P_Target2[i].X = x1;
-            P_Target2[i].Y = y1 + plus_dec*(i-init+1);
-        }
-    }
-    if (y1 == y2)
-    {
-        num_cor = abs(x1 - x2);
-        P_Target2[init-1].X = x1;
-        P_Target2[init-1].Y = y1;
-        P_Target2[init-1+num_cor].X = x2;
-        P_Target2[init-1+num_cor].Y = y2;
-        if (x2 > x1)
-            plus_dec = 1;
-        else plus_dec = -1;
-        for (int i = init; i < init-1+num_cor; i++)
-        {
-            P_Target2[i].X = x1 + plus_dec*(i-init+1);
-            P_Target2[i].Y = y1 ;
-        }
-    }
-    init = init + num_cor+1;
-    return init;
-}
+
