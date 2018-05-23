@@ -26,13 +26,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    datashare.cpp
+    datashare.cpp \
+    errorreportwindow.cpp
 
 HEADERS += \
         mainwindow.h \
-    datashare.h
+    datashare.h \
+    errorreportwindow.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    errorreportwindow.ui
 
 LIBS += -lwiringPi

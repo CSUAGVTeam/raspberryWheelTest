@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>777</width>
+    <width>867</width>
     <height>617</height>
    </rect>
   </property>
@@ -152,7 +152,7 @@
    <widget class="QWidget" name="verticalLayoutWidget_4">
     <property name="geometry">
      <rect>
-      <x>440</x>
+      <x>430</x>
       <y>130</y>
       <width>321</width>
       <height>191</height>
@@ -191,7 +191,7 @@
    <widget class="QWidget" name="horizontalLayoutWidget_2">
     <property name="geometry">
      <rect>
-      <x>590</x>
+      <x>580</x>
       <y>10</y>
       <width>171</width>
       <height>78</height>
@@ -436,6 +436,19 @@
    <widget class="QPushButton" name="rotateLeftButton">
     <property name="geometry">
      <rect>
+      <x>350</x>
+      <y>400</y>
+      <width>89</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>R_Right</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rotateRightButton">
+    <property name="geometry">
+     <rect>
       <x>250</x>
       <y>400</y>
       <width>89</width>
@@ -446,23 +459,10 @@
      <string>R_Left</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="rotateRightButton">
-    <property name="geometry">
-     <rect>
-      <x>370</x>
-      <y>400</y>
-      <width>89</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>R_Right</string>
-    </property>
-   </widget>
    <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>480</x>
+      <x>460</x>
       <y>340</y>
       <width>291</width>
       <height>94</height>
@@ -633,13 +633,292 @@
      <bool>false</bool>
     </property>
    </widget>
+   <widget class="QPushButton" name="reconnectButton">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>100</y>
+      <width>80</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>reconnect</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="TCPStatusLabel">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>100</y>
+      <width>211</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>60</y>
+      <width>91</width>
+      <height>110</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_9">
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>电量(%)：</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="batteryCollumLabel">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>电压(V)：</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="batteryVoltageLable">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>电流(A)：</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="batteryCurrentLble">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_3">
+    <property name="geometry">
+     <rect>
+      <x>760</x>
+      <y>140</y>
+      <width>101</width>
+      <height>411</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_10">
+     <item>
+      <widget class="QCheckBox" name="comCheckBox">
+       <property name="text">
+        <string>串口断开</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="wheelCheckBox">
+       <property name="text">
+        <string>舵轮问题</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="wifiCheckBox">
+       <property name="text">
+        <string>无线断连</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="labelOfQRCode">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>430</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelOfMissionStatus">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>450</y>
+      <width>111</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="sickABox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>180</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>sickA</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="sickBBox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>200</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>sickB</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="sickCBox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>230</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>sickC</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="manulCalibrationButton">
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>450</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>舵轮校零</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="turnSpeedSetButton">
+    <property name="geometry">
+     <rect>
+      <x>770</x>
+      <y>60</y>
+      <width>81</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>设定转弯速度</string>
+    </property>
+   </widget>
+   <widget class="QTextEdit" name="turnSpeedSetEdit">
+    <property name="geometry">
+     <rect>
+      <x>770</x>
+      <y>20</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="clearFileButton">
+    <property name="geometry">
+     <rect>
+      <x>770</x>
+      <y>90</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>清除文件</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="errorReportButton">
+    <property name="geometry">
+     <rect>
+      <x>144</x>
+      <y>350</y>
+      <width>91</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>查找错误信息</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="showErrorLogButton">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>390</y>
+      <width>81</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>显示错误日志</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelOfWheelAngle">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>430</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelOfWheelAngle4">
+    <property name="geometry">
+     <rect>
+      <x>220</x>
+      <y>430</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>777</width>
+     <width>867</width>
      <height>23</height>
     </rect>
    </property>

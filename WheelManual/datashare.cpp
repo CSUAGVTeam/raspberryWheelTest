@@ -23,6 +23,8 @@
 #include <QTime>
 #include <QCoreApplication>
 #include <QObject>
+#include <QTextStream>
+#include <QFile>
 
 
 
@@ -52,11 +54,12 @@ Datashare::Datashare(QObject *parent) : QObject(parent)
     getSpeedString=0;								//放弃不用
     wheelAddress = 0;								//舵机驱动器地址
     wheelMoveSpeedSet=0;							//舵机驱动器速度
-    wheelMoveSpeedSetMax = 0.8;					//舵机驱动器最大速度
+    wheelMoveSpeedSetMax = 1.2;					//舵机驱动器最大速度
     wheelAngle = 0;									//舵机打角
     delayTimeSet = 5;								//延时参数（改为232后放弃不用了）
     wheelFrontAngleOffset = 0;						//前轮打角偏移量
     wheelRearAngleOffset = 0;						//后轮打角偏移量
+    warningFile.setFileName("/home/pi/lys/errorReport.txt");
     connect(this,SIGNAL(timingbeginSignal()),this,SLOT(timingNow()));		// 定时信号与定时槽连通（放弃不用）
 }
 
@@ -660,17 +663,20 @@ void Datashare::readIO()
     // //read the speed of wheel
      write(fd1,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
      numberOfRead = read(fd1,array,sizeof(array));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
      wheelMoveSpeedReadFront = convertTelegramHex2Speed(array);
 
     // memset(array,0,14*sizeof(unsigned char));
      write(fd3,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
      numberOfRead = read(fd3,array3,sizeof(array3));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
      wheelMoveSpeedReadRear = convertTelegramHex2Speed(array3);
 
     // //read the angle of wheel
     // memset(array,0,14*sizeof(unsigned char));
      write(fd2,readPositionData,sizeof(readPositionData));//fflush(stdout);
      numberOfRead = read(fd2,array2,sizeof(array2));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
      frontTelegram.clear();
      for(int i=0;i<numberOfRead;i++)
      {
@@ -684,6 +690,8 @@ void Datashare::readIO()
     // memset(array,0,14*sizeof(unsigned char));
      write(fd4,readPositionData,sizeof(readPositionData));//fflush(stdout);
      numberOfRead = read(fd4,array4,sizeof(array4));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+
      backTelegram.clear();
      for(int i=0;i<numberOfRead;i++)
      {
@@ -711,6 +719,7 @@ void Datashare::readIO()
 	write(fd6,readInertialBuff,sizeof(readInertialBuff));
 	delayTimeMsecs(8);
 	numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
+    if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 	//ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
     yaw = angle_trans(arrayTemp[4],arrayTemp[3])-yaw_error;
     while(yaw>=360||yaw<0)
@@ -720,14 +729,13 @@ void Datashare::readIO()
         if(yaw<0)
             yaw+=360;
     }
-
    // if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
 
     AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2 * cos(wheelRearAngle*3.14159/180);
     AGVSpeeds.X=AGVSpeed*cos((yaw-yawInt)*3.14159/180);
     AGVSpeeds.Y=AGVSpeed*sin((yaw-yawInt)*3.14159/180);
 
-	yawLast =	yaw;
+
 
     //checkIO();
 }
@@ -737,44 +745,45 @@ void Datashare::gainAccessAndEnableWheel(void)
 {
 	unsigned char resetcommand[12] = {0xa5,0x3f,0x02,0x01,0x00,0x01,0x01,0x47,0x00,0x10,0x12,0x31};
     int array[20]= {0};
+    int number;
 	// disable the bridge
-    write(fd1,disableBridgeCommand,sizeof(disableBridgeCommand));read(fd1,array,20);
-    write(fd2,disableBridgeCommand,sizeof(disableBridgeCommand));read(fd2,array,20);
-    write(fd3,disableBridgeCommand,sizeof(disableBridgeCommand));read(fd3,array,20);
-    write(fd4,disableBridgeCommand,sizeof(disableBridgeCommand));read(fd4,array,20);
+    write(fd1,disableBridgeCommand,sizeof(disableBridgeCommand));number=read(fd1,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd2,disableBridgeCommand,sizeof(disableBridgeCommand));number=read(fd2,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd3,disableBridgeCommand,sizeof(disableBridgeCommand));number=read(fd3,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd4,disableBridgeCommand,sizeof(disableBridgeCommand));number=read(fd4,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 	delayTimeMsecs(100);
 	// reset 
-	write(fd1,resetcommand,sizeof(resetcommand));read(fd1,array,20);
-	write(fd2,resetcommand,sizeof(resetcommand));read(fd2,array,20);
-	write(fd3,resetcommand,sizeof(resetcommand));read(fd3,array,20);
-	write(fd4,resetcommand,sizeof(resetcommand));read(fd4,array,20);
+    write(fd1,resetcommand,sizeof(resetcommand));number=read(fd1,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd2,resetcommand,sizeof(resetcommand));number=read(fd2,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd3,resetcommand,sizeof(resetcommand));number=read(fd3,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    write(fd4,resetcommand,sizeof(resetcommand));number=read(fd4,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 	delayTimeMsecs(100);
 	
    //writeAccessToDrive(01);
    //write(fd1,mptr)
    write(fd1,gainAccess,sizeof(gainAccess));
-   read(fd1,array,20);
+   number=read(fd1,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
    //delayTimeMsecs(delayTimeSet);
    //writeAccessToDrive(02);
-   write(fd2,gainAccess,sizeof(gainAccess));read(fd2,array,20);
+   write(fd2,gainAccess,sizeof(gainAccess));number=read(fd2,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   writeAccessToDrive(03);
-   write(fd3,gainAccess,sizeof(gainAccess));read(fd3,array,20);
+   write(fd3,gainAccess,sizeof(gainAccess));number=read(fd3,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   writeAccessToDrive(04);
-   write(fd4,gainAccess,sizeof(gainAccess));read(fd4,array,20);
+   write(fd4,gainAccess,sizeof(gainAccess));number=read(fd4,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   enableBridge(01);
-   write(fd1,enableBridgeCommand,sizeof(enableBridgeCommand));read(fd1,array,20);
+   write(fd1,enableBridgeCommand,sizeof(enableBridgeCommand));number=read(fd1,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   enableBridge(02);
-   write(fd2,enableBridgeCommand,sizeof(enableBridgeCommand));read(fd2,array,20);
+   write(fd2,enableBridgeCommand,sizeof(enableBridgeCommand));number=read(fd2,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   enableBridge(03);
-   write(fd3,enableBridgeCommand,sizeof(enableBridgeCommand));read(fd3,array,20);
+   write(fd3,enableBridgeCommand,sizeof(enableBridgeCommand));number=read(fd3,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 //   enableBridge(04);
-   write(fd4,enableBridgeCommand,sizeof(enableBridgeCommand));read(fd4,array,20);
+   write(fd4,enableBridgeCommand,sizeof(enableBridgeCommand));number=read(fd4,array,20);if(number <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
 //   delayTimeMsecs(delayTimeSet);
 }
 
@@ -782,47 +791,112 @@ void Datashare::gainAccessAndEnableWheel(void)
 void Datashare::checkIO()
 {
     int array[20] = {0};
-    /*********************************
-    if (sickWarningSpaceAlert && (!sickFalse))
-    {
-        wheelMoveSpeedSetMax -=800; (wheelMoveSpeedSetMax<0) ? wheelMoveSpeedSetMax = 0: 0;
-        systemOnLight = 0;
-        warmingLight = 1;
-        alarmLight = 0;
-     //   write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
-    }      //  unit: r/min ,fix in the future.
+    double yawTarget_Delta;
 
-    if ((!sickWarningSpaceAlert) && (!sickFalse))
+    if(direction_flag==true)
     {
-        wheelMoveSpeedSetMax +=800; (wheelMoveSpeedSetMax>2400) ? wheelMoveSpeedSetMax = 2400 : 0;
-        systemOnLight = 1;
-        warmingLight = 0;
-        alarmLight = 0;
-     //   write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
-    }// The space is available, and add the speed upper limit.
+        if (sickWarningSpaceAlert && (!sickFalse) )
+        {
+            if(wheelMoveSpeedSet > 0.3)
+                wheelMoveSpeedSet = 0.3;
+            systemOnLight = 0;
+            warmingLight = 1;
+            alarmLight = 0;
+            sickFlag = true;
+            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+        }      //  unit: r/min ,fix in the future.
 
-    if (sickWarningSpaceAlert & sickFalse)
+        if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
+        {
+            if(AGVSpeed <= 0.05)
+                wheelMoveSpeedSet = 0.08;
+            else
+            {
+                wheelMoveSpeedSet = wheelSpeedHold;
+                sickFlag = false;
+            }
+            systemOnLight = 1;
+            warmingLight = 0;
+            alarmLight = 0;
+            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+        }// The space is available, and add the speed upper limit.
+
+        if (sickWarningSpaceAlert & sickFalse)
+        {
+            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+            sickFlag = true;
+            systemOnLight = 0;
+            warmingLight = 0;
+            alarmLight = 1;
+            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+        }
+        if ( AGVSpeed >= 0.32 )                          {sickA=0; sickB=0; sickC=1;}
+        if ( AGVSpeed < 0.32 )                          {sickA=0; sickB=1; sickC=0;}
+    }
+    else
     {
-        wheelMoveSpeedSetMax = 0;    // warning field2 alert, stop AGV
-        systemOnLight = 0;
-        warmingLight = 0;
-        alarmLight = 1;
-     //   write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+        if (sickWarningSpaceAlert && (!sickFalse) )
+        {
+            if(wheelMoveSpeedSet < -0.3)
+                wheelMoveSpeedSet = -0.3;
+            systemOnLight = 0;
+            warmingLight = 1;
+            alarmLight = 0;
+            sickFlag = true;
+            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+        }      //  unit: r/min ,fix in the future.
+
+        if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
+        {
+            if(AGVSpeed >= -0.05)
+                wheelMoveSpeedSet = -0.08;
+            else
+            {
+                wheelMoveSpeedSet = wheelSpeedHold;
+                sickFlag = false;
+            }
+            systemOnLight = 1;
+            warmingLight = 0;
+            alarmLight = 0;
+
+            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+        }// The space is available, and add the speed upper limit.
+
+        if (sickWarningSpaceAlert & sickFalse)
+        {
+            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+            sickFlag = true;
+            systemOnLight = 0;
+            warmingLight = 0;
+            alarmLight = 1;
+            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+        }
+        if ( AGVSpeed >= -0.32 )                          {sickA=0; sickB=1; sickC=1;}
+        if ( AGVSpeed < -0.32 )                          {sickA=1; sickB=1; sickC=0;}
     }
 
-    //if ( sickFalse && (!sickWarningSpaceAlert) )    emergencyFlag = true;                           // check in the future, whether the parameter is useful?
 
-//    if ( AGVSpeed > 2400 )                          {sickA=1; sickB=0; sickC=0;}
+    if(turn_flag)
+    {
+        yawTarget_Delta = yawTarget-yawTarget_Last;
+        if(yawTarget_Delta>180)
+        {
+            yawTarget_Delta=yawTarget_Delta-360;
+        }else if(yawTarget_Delta>=(-180))
+        {
+            yawTarget_Delta=yawTarget_Delta;
+        }else
+        {
+            yawTarget_Delta=yawTarget_Delta+360;
+        }
+        if(yawTarget_Delta>50)   {sickA=1;sickB=0;sickC=0;}
+        if(yawTarget_Delta<-50)  {sickA=1;sickB=0;sickC=1;}
+        //if ( sickFalse && (!sickWarningSpaceAlert) )    emergencyFlag = true;                           // check in the future, whether the parameter is useful?
 
-//    if ((1600<AGVSpeed) && (AGVSpeed< 2400))        {sickA=1; sickB=0; sickC=1;}
+    }
 
-//    if ((800<AGVSpeed) && (AGVSpeed<1600))          {sickA=1; sickB=1; sickC=0;}
 
-//    if (AGVSpeed <800)                             {sickA=1; sickB=1; sickC=1;}
-    sickA = 0;
-    sickB = 0;
-    sickC = 1;
-    ***********************************************/
+
 
     //wheelAngle = Incremental_PI(yaw,yawTarget);                                     //PI control the angle of wheel
     /**
@@ -849,17 +923,35 @@ void Datashare::checkIO()
     {
         a = Position_PID2 (delta_s,turn_flag);
         b = Position_PID(yaw, yawTarget);
-        if(fabs(delta_s)>=0.012)
+        if(fabs(AGVSpeed) <= 0.6)
         {
-            //if( (a>0 && b>0) || (a<0 && b<0) )
-            //   wheelAngle = 1.7*a + 0.2*b;
-            //else
-               wheelAngle = 1.6*a+0.4*b;
+            if(fabs(delta_s)>=0.012)
+            {
+                //if( (a>0 && b>0) || (a<0 && b<0) )
+                //   wheelAngle = 1.7*a + 0.2*b;
+                //else
+                   wheelAngle = 1.6*a+0.4*b;
+            }
+            else
+            {
+                wheelAngle = a+b;
+            }
         }
         else
         {
-            wheelAngle = a+b;
+            if(fabs(delta_s)>=0.012)
+            {
+                //if( (a>0 && b>0) || (a<0 && b<0) )
+                //   wheelAngle = 1.7*a + 0.2*b;
+                //else
+                   wheelAngle = 1.3*a+0.3*b;
+            }
+            else
+            {
+                wheelAngle = a+b;
+            }
         }
+
         if(wheelAngle<-12)
             wheelAngle=-12;
         if(wheelAngle>12)
@@ -1324,16 +1416,25 @@ double Datashare::Position_PID (double Encoder,double Target)
      if(Integral_bias>120)Integral_bias=120;
      if(Integral_bias<-120)Integral_bias=-120;
      */
-     if(fabs(KP_Angle*Bias*8)<fabs(KD_Angle*(Bias-Last_Bias)))
+     if(fabs(Bias)<8)  //20
      {
-         Pwm=KP_Angle*Bias;
+         if(fabs(KP_Angle*Bias*10)<fabs(KD_Angle*(Bias-Last_Bias)))
+         {
+             Pwm=KP_Angle*Bias;
+         }
+         else
+         {
+             Pwm=KP_Angle*Bias+KD_Angle*(Bias-Last_Bias);
+         }
+         //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+         Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
      }
      else
      {
-         Pwm=KP_Angle*Bias+KD_Angle*(Bias-Last_Bias);
+         yaw = yawLast;
      }
-     //Pwm=KP_Angle*Bias+KI_Angle*Integral_bias+KD_Angle*(Bias-Last_Bias);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
-     Last_Bias=Bias;                                       //±£ŽæÉÏÒ»ŽÎÆ«²î
+     yawLast = yaw;
+
      if (Pwm>45) Pwm = 45;
      if (Pwm<-45) Pwm = -45;
      return Pwm;                                           //ÔöÁ¿Êä³ö
@@ -1458,6 +1559,7 @@ double Datashare::Information_Corrective()
     double Side_Twocode=0;               //二维码图像边长
     double Angle_Error=0;                //角度偏差
     double Yaw_Error=0;                  //惯导漂移值
+
     //double N_YawInt=0;                   //坐标系正方向修正角度
     //double Chord_Length = 0;
     Position delta_TwoCode = {0,0};
@@ -1471,6 +1573,9 @@ double Datashare::Information_Corrective()
     Position Error_Position_Right[4]={{0.0125,0.0125},{0.0125,-0.0125},{-0.0125,0.0125},{-0.0125,-0.0125}};//此处的值是根据所贴二维码大小及之间位置决定
     Target_Location=(QR_Code_Number-1)/4;
     Target_Number=(QR_Code_Number-1)%4;
+
+    P_protection.X = P_TwoCode[Target_Location].X;
+    P_protection.Y = P_TwoCode[Target_Location].Y;
 
     Image_Error.X=Image_Center.X-QR_Point[4].X;
     Image_Error.Y=Image_Center.Y-QR_Point[4].Y;
@@ -1521,7 +1626,7 @@ double Datashare::Information_Corrective()
       case 3:
             {
                Error_Position = Error_Position_Right ;
-               Error_Position += Target_Number;
+               Error_Position += Target_Number;               
                break;
             }
       default: break;
@@ -1582,9 +1687,17 @@ double Datashare::Information_Corrective()
     {
         if(turn_flag==false)
         {
-            P_protection.X = P_TwoCode[Target_Location].X;
-            P_protection.Y = P_TwoCode[Target_Location].Y;
-            yawInt = yaw-90-Angle_Error-0.2-Num_Turn*90;//坐标系的重建
+            if(direction_flag == true)
+            {
+               yawInt = yaw-90-Angle_Error-Num_Turn*90;//坐标系的重建
+               yawTarget = yaw - Angle_Error;//目标方向修正
+            }
+            else
+            {
+                yawInt = yaw-90-Angle_Error-0.3-Num_Turn*90;//坐标系的重建//0.35
+                yawTarget = yaw - Angle_Error-0.3;//目标方向修正
+            }
+            //yawInt = yaw-90-Angle_Error-0.2-Num_Turn*90;//坐标系的重建
             while(yawInt<0||yawInt>=360)
             {
                 if(yawInt<0)
@@ -1593,7 +1706,7 @@ double Datashare::Information_Corrective()
                     yawInt-=360;
             }
             //if(fabs(Angle_Error)<25) //对错角滤波
-                yawTarget = yaw - Angle_Error-0.2;//目标方向修正
+            //    yawTarget = yaw - Angle_Error-0.2;//目标方向修正
             while(yawTarget<0||yawTarget>=360)
             {
                 if(yawTarget<0)
@@ -1657,19 +1770,18 @@ double Datashare::Position_PID2 (double delta,bool flag)
      static double Last_Pwm=0;
      double KP_Line;
 
-
      if(flag==false)
      {
-         if(Td_SpeedSet<=0.35)
+         if(fabs(AGVSpeed)<=0.35)
          {
-             KP=16;
+             KP=14;
              KD=1250;
              if(fabs(delta)<0.28)
-                KP_Line=(delta*delta)*6500+KP;
+                KP_Line=(delta*delta)*7000+KP;
              else
                 KP_Line=(delta*delta)*8000+KP;
          }
-         else
+         else if(fabs(AGVSpeed)<=0.55)
          {
              KP=10;
              KD=1200;
@@ -1677,6 +1789,15 @@ double Datashare::Position_PID2 (double delta,bool flag)
                 KP_Line=(delta*delta)*6000+KP;
              else
                 KP_Line=(delta*delta)*7000+KP;
+         }
+         else
+         {
+             KP=8;
+             KD=1000;
+             if(fabs(delta)<0.28)
+                KP_Line=(delta*delta)*5000+KP;
+             else
+                KP_Line=(delta*delta)*5000+KP;
          }
 
          Integral_delta+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
@@ -1904,10 +2025,23 @@ double Datashare::Position_Turn_crol (Position P_Centre,Position P_Target,Positi
     Angle=sqrt(Radius_turn_sq)-sqrt(Distance_NowToRad_sq);
     if(Distance_NowToTar_sq<=0.1)//到达目标点，精度为30cm(出弯点)
     {
-
+       if(targetNumber-num-1 == 1)
+       {
+           if(direction_flag)
+           {
+               wheelMoveSpeedSet = 0.1;
+               wheelSpeedHold = wheelMoveSpeedSet;
+           }
+           else
+           {
+               wheelMoveSpeedSet = -0.1;
+               wheelSpeedHold = wheelMoveSpeedSet;
+           }
+       }
        num++;
        turn_flag=false;
        num_AddSpeed = num;
+       //Centre_num++; //圆心加1
 
     }
     delta_angle=yawTarget-yaw;
@@ -2059,7 +2193,7 @@ double Datashare::Go2 (Position P_Targets )
    double Dis_NowToTar=0;
    double Dis_SpeedAdd = 0;
    double Dis_Stop = 0;  //到停车点停车
-   double Dis_stop1 = 0;  //检测不到二维码停车
+   double Dis_protec = 0;  //检测不到二维码停车
    double Distance_stop=0;
    //int circle_N=0;
    double R=0;
@@ -2067,54 +2201,256 @@ double Datashare::Go2 (Position P_Targets )
    double a=0.0025;
    Vector Vector_Now={0,0,0};
    Vector Vector_NowTar ={0,0,0};
-   Vector Vector_Cross_Product = {0,0,0};
+   Vector Vector_Cross_Product = {0,0,0};          //左右转弯判断
    //double Angle_NowTar=0;
    //static int Num_Bend = 0;
 
   Dis_NowToTar=(AGVLocation.X-P_Targets.X)*(AGVLocation.X-P_Targets.X)+(AGVLocation.Y-P_Targets.Y)*(AGVLocation.Y-P_Targets.Y);
-  Dis_Stop=(AGVLocation.X-P_Stop.X)*(AGVLocation.X-P_Stop.X)+(AGVLocation.Y-P_Stop.Y)*(AGVLocation.Y-P_Stop.Y);
-  Dis_stop1 = (AGVLocation.X-P_protection.X)*(AGVLocation.X-P_protection.X)+(AGVLocation.Y-P_protection.Y)*(AGVLocation.Y-P_protection.Y);
+
+  Dis_Stop=(AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+(AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y);
+
+  Dis_protec = (AGVLocation.X-P_protection.X)*(AGVLocation.X-P_protection.X)+(AGVLocation.Y-P_protection.Y)*(AGVLocation.Y-P_protection.Y);
 
   Dis_SpeedAdd = (AGVLocation.X-P_Target[num_AddSpeed].X)*(AGVLocation.X-P_Target[num_AddSpeed].X)+(AGVLocation.Y-P_Target[num_AddSpeed].Y)*(AGVLocation.Y-P_Target[num_AddSpeed].Y);
 
-  if((Dis_SpeedAdd <= 0.01) && (turn_flag == false))  //出弯一个点后加速
+  if(targetNumber-num-1 >= 3)
   {
-       Flag_SpeedAdd = true;
-       Flag_SpeedDe = false;
-       num_AddSpeed = 29;
-  }
-
-  if(Dis_stop1 >= 6.25) //检测不到二维码停车
-  {
-      //wheelMoveSpeedSet = 0;
-  }
-
-  if(Dis_Stop<=0.01)
-  {
-      switch((Num_Turn+4)%2) //确定停车距离
+      if((Dis_SpeedAdd <= 0.01) && (turn_flag == false))  //出弯一个点后加速
       {
-          case 0:
-          {
-              Distance_stop = AGVLocation.X*AGVLocation.X+0.00012;
-              break;
-          }
-          case 1:
-          {
-              Distance_stop = AGVLocation.Y*AGVLocation.Y+0.00012;
-              break;
-          }
-        default: break;
+           Flag_SpeedAdd = true;
+           Flag_SpeedDe = false;
+           //num_AddSpeed = 120;
       }
-
   }
-  if(Dis_Stop <= Distance_stop) //停车
+  else
   {
+      if(direction_flag == true)
+      {
+          switch((Num_Turn+4)%4) //确定停车距离
+          {
+              case 0:
+              {
+                  if(AGVLocation.Y >= P_Target[targetNumber-1].Y)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 1:
+              {
+                  if(AGVLocation.X <= P_Target[targetNumber-1].X)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 2:
+              {
+                  if(AGVLocation.Y <= P_Target[targetNumber-1].Y)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 3:
+              {
+                  if(AGVLocation.X >= P_Target[targetNumber-1].X)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+            default: break;
+          }
+      }
+      else
+      {
+          switch((Num_Turn+4)%4) //确定停车距离
+          {
+              case 0:
+              {
+                  if(AGVLocation.Y <= P_Target[targetNumber-1].Y)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 1:
+              {
+                  if(AGVLocation.X >= P_Target[targetNumber-1].X)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 2:
+              {
+                  if(AGVLocation.Y >= P_Target[targetNumber-1].Y)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+              case 3:
+              {
+                  if(AGVLocation.X <= P_Target[targetNumber-1].X)
+                  {
+                      breakFlag = true;
+                      wheelMoveSpeedSet = 0;
+                  }
+                  break;
+              }
+            default: break;
+         }
+     }
+      if(Dis_Stop<=0.0016 )
+      {
 
-      breakFlag = true;
-      wheelMoveSpeedSet = 0;
-      Flag_SpeedAdd = false;
-      Flag_SpeedDe = false;
-      Flag_Stop = false;
+          switch((Num_Turn+4)%2) //确定停车距离
+          {
+              case 0:
+              {
+                  Distance_stop = (AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+0.00003;
+                  break;
+              }
+              case 1:
+              {
+                  Distance_stop = (AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y)+0.00003;
+                  break;
+              }
+            default: break;
+          }
+/***
+          if(direction_flag == true)
+          {
+              switch((Num_Turn+4)%4) //确定停车距离
+              {
+                  case 0:
+                  {
+                      if(AGVLocation.Y < P_Target[targetNumber-1].Y)
+                         Distance_stop = (AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+0.00003;  //0.00005
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 1:
+                  {
+                      if(AGVLocation.X > P_Target[targetNumber-1].X)
+                         Distance_stop = (AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 2:
+                  {
+                      if(AGVLocation.Y > P_Target[targetNumber-1].Y)
+                          Distance_stop = (AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 3:
+                  {
+                      if(AGVLocation.X < P_Target[targetNumber-1].X)
+                          Distance_stop = (AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                default: break;
+              }
+          }
+          else
+          {
+              switch((Num_Turn+4)%4) //确定停车距离
+              {
+                  case 0:
+                  {
+                      if(AGVLocation.Y > P_Target[targetNumber-1].Y)
+                         Distance_stop = (AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 1:
+                  {
+                      if(AGVLocation.X < P_Target[targetNumber-1].X)
+                         Distance_stop = (AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 2:
+                  {
+                      if(AGVLocation.Y < P_Target[targetNumber-1].Y)
+                          Distance_stop = (AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                  case 3:
+                  {
+                      if(AGVLocation.X > P_Target[targetNumber-1].X)
+                          Distance_stop = (AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y)+0.00003;
+                      else
+                      {
+                          breakFlag = true;
+                          wheelMoveSpeedSet = 0;
+                      }
+                      break;
+                  }
+                default: break;
+             }
+          }
+         ****/
+      }
+      if(Dis_Stop <= Distance_stop) //停车
+      {
+          breakFlag = true;
+          wheelMoveSpeedSet = 0;
+          Flag_SpeedAdd = false;
+          Flag_SpeedDe = false;
+          Flag_Stop = false;
+      }
+  }
+
+
+  if(turn_flag == false)
+  {
+      if(Dis_protec >= 5) //检测不到二维码停车
+      {
+          wheelMoveSpeedSet = 0;
+//          breakFlag = true;
+//          fileClearFlag =false;
+      }
   }
 
   if(turn_flag==true)
@@ -2127,25 +2463,70 @@ double Datashare::Go2 (Position P_Targets )
       if(Dis_NowToTar<a)//直线点以及入弯点精度
       {
               //num++;
-                  for(int i=0;i<=num;i++)
+               if(targetNumber-num-1 <= 4)  //是否快到终点
+               {
+                  if(P_Target[num+1].X==P_Target[targetNumber-1].X)
                   {
-                      if(P_Target[num+1].X==P_Stop.X)
+                      if(P_Target[num+1].Y==P_Target[targetNumber-1].Y)
                       {
-                          if(P_Target[num+1].Y==P_Stop.Y)
+                          Flag_SpeedAdd = false;
+                          Flag_SpeedDe = false;
+                          Flag_Stop = true;  //停车前减速标志位
+                      }
+                  }
+
+                  if(fabs(AGVSpeed) > 0.6 )
+                  {
+                      if(P_Target[num+4].X==P_Target[targetNumber-1].X)
+                      {
+                          if(P_Target[num+4].Y==P_Target[targetNumber-1].Y)
                           {
-                              Flag_SpeedAdd = false;
-                              Flag_SpeedDe = false;
-                              Flag_Stop = true;  //停车前减速标志位
+                              if(direction_flag == true)
+                                  wheelMoveSpeedSet = 0.6;  //停车前四个二维码减速
+                              else
+                                  wheelMoveSpeedSet = -0.6;
                           }
                       }
+                  }
+                  if(fabs(AGVSpeed) > 0.3 )
+                  {
+                      if(P_Target[num+3].X==P_Target[targetNumber-1].X)
+                      {
+                          if(P_Target[num+3].Y==P_Target[targetNumber-1].Y)
+                          {
+                              if(direction_flag == true)
+                                  wheelMoveSpeedSet = 0.3;  //停车前三个二维码减速
+                              else
+                                  wheelMoveSpeedSet = -0.3;
+                          }
+                      }
+                  }
 
+                }
+                for(int i=0;i<numberOfTurnCentre;i++)
+                {
                       if(P_Target[num+1].X==P_Target3[i].X)
                       {
                           if(P_Target[num+1].Y==P_Target3[i].Y)
                           {
-                              Flag_SpeedAdd = false;
+                              Flag_SpeedAdd = false; //入弯提前一个点减速
                               Flag_SpeedDe = true;
                               break;
+                          }
+                      }
+
+                      if(fabs(AGVSpeed) > 0.5)  //高速入弯提前两个点减速
+                      {
+                          if(P_Target[num+2].X==P_Target3[i].X)
+                          {
+                              if(P_Target[num+2].Y==P_Target3[i].Y)
+                              {
+                                  if(direction_flag == true)
+                                      wheelMoveSpeedSet = 0.5;
+                                  else
+                                      wheelMoveSpeedSet = -0.5;
+                                  break;
+                              }
                           }
                       }
 
@@ -2155,11 +2536,13 @@ double Datashare::Go2 (Position P_Targets )
                           {
                               P_protection.X = P_Target[num+1].X;
                               P_protection.Y = P_Target[num+1].Y;
+                              P_Centre = P_Target4[i];
                               Straight_Bend =true;
                               break;
                           }
                       }
-                  }
+                }
+
                   if(Straight_Bend==true)
                   {
                         Vector_Now.X = P_Target[num].X- P_Target[num-1].X;
@@ -2179,7 +2562,7 @@ double Datashare::Go2 (Position P_Targets )
                         {
                             yawTarget_Last = yawTarget;
                             Num_Turn-=1;
-                           yawTarget-=90;
+                            yawTarget-=90;
                         }
                       //yawTarget+=(90);
                       //Angle_Bend+=90;
@@ -2201,6 +2584,7 @@ double Datashare::Go2 (Position P_Targets )
                   if(turn_flag==true&&Straight_Bend==true)//弯道入口处
                   {
                      num++;
+
                   }
 
               while(Num_Turn<0||Num_Turn>=4)
@@ -2334,19 +2718,31 @@ void Datashare::Speed_Adj(void)
     {
         if(Flag_Stop == true)
         {
-            wheelMoveSpeedSet = 0.1;
+            if(((AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+(AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y))>0.04)
+            {
+                wheelMoveSpeedSet = 0.1;
+                wheelSpeedHold = wheelMoveSpeedSet;
+            }
+            else
+            {
+                wheelMoveSpeedSet = 0.02;
+                wheelSpeedHold = wheelMoveSpeedSet;
+            }
+            //Flag_Stop = false;  //这会不会有问题
         }
         else
         {
             if(Flag_SpeedDe == true) //入弯减速
             {
-                wheelMoveSpeedSet = 0.3;
+                wheelMoveSpeedSet = wheelTurnSpeed;
+                wheelSpeedHold = wheelMoveSpeedSet;
                 Flag_SpeedDe = false;
             }
     
             if(Flag_SpeedAdd == true) //出弯加速
             {
-                wheelMoveSpeedSet = 0.6;
+                wheelMoveSpeedSet = wheelSpeedTarget;
+                wheelSpeedHold = wheelMoveSpeedSet;
                 Flag_SpeedAdd = false;
             }
         }
@@ -2356,19 +2752,30 @@ void Datashare::Speed_Adj(void)
     {
         if(Flag_Stop == true)
         {
-           wheelMoveSpeedSet = -0.1;
+            if(((AGVLocation.X-P_Target[targetNumber-1].X)*(AGVLocation.X-P_Target[targetNumber-1].X)+(AGVLocation.Y-P_Target[targetNumber-1].Y)*(AGVLocation.Y-P_Target[targetNumber-1].Y))>0.04)
+            {
+                wheelMoveSpeedSet = -0.1;
+                wheelSpeedHold = wheelMoveSpeedSet;
+            }
+            else
+            {
+                wheelMoveSpeedSet = -0.02;
+                wheelSpeedHold = wheelMoveSpeedSet;
+            }
         }
         else
         {
             if(Flag_SpeedDe == true) //入弯减速
             {
-                wheelMoveSpeedSet = -0.3;
+                wheelMoveSpeedSet = -wheelTurnSpeed;
+                wheelSpeedHold = wheelMoveSpeedSet;
                 Flag_SpeedDe = false;
             }
 
             if(Flag_SpeedAdd == true) //出弯加速
             {
-                wheelMoveSpeedSet = -0.4;
+                wheelMoveSpeedSet = wheelSpeedTarget;
+                wheelSpeedHold = wheelMoveSpeedSet;
                 Flag_SpeedAdd = false;
             }
         }
@@ -2385,27 +2792,29 @@ void Datashare::Code_Init()
 
     Speed_h=0.03;
     yaw_error = 0;
-    if(buf!=buf_last)//此处加扫描到二维码的判断信息
-   {
+
+//    if(buf!=buf_last)//此处加扫描到二维码的判断信息
+    {
         if(buf!=NULL)
         {
             QR_Flag=Two_bar_codes_Pro2(buf);
         }
-   }
+    }
+
    if(QR_Flag==true)
    {
        //加上位置，角度处理函数
-       Target_Location=(QR_Code_Number-1)/4;
-       while(i<targetNumber)
+       Target_Location=(QR_Code_Number-1)/4;      
+       for(i=0;i<targetNumber;i++)
        {
             if( ((P_Target[i].X-P_TwoCode[Target_Location].X)*(P_Target[i].X-P_TwoCode[Target_Location].X)+(P_Target[i].Y-P_TwoCode[Target_Location].Y)*(P_Target[i].Y-P_TwoCode[Target_Location].Y)) < 0.1)
             {
                 AGVLocation.X = P_Target[i].X;
-                AGVLocation.Y = P_Target[i].Y;
-                num = i+1;               
+                AGVLocation.Y = P_Target[i].Y;                
+                num = i;
                 break;
             }
-            i++;
+
        }
 
        P_Stop.X = P_Target[targetNumber-1].X;
@@ -2479,6 +2888,11 @@ void Datashare::Code_Init()
            default: break;
        }
 
+       P_Target[targetNumber].X=P_Target[targetNumber-1].X;
+       P_Target[targetNumber].Y=P_Target[targetNumber-1].Y;
+       P_Target[targetNumber+1].X=P_Target[targetNumber-1].X;
+       P_Target[targetNumber+1].Y=P_Target[targetNumber-1].Y;
+
        //读惯导角度
        write(fd6,readInertialBuff,sizeof(readInertialBuff));
        delayTimeMsecs(8);
@@ -2501,6 +2915,297 @@ void Datashare::Code_Init()
 
 }
 
+
+/***********************        自动生成路径坐标函数        *****************************/
+int Datashare::Trace(int x1,int y1,int x2,int y2, int init )
+{
+    int num_cor;
+    int plus_dec;
+    if (x1 == x2)
+    {
+        num_cor = abs(y1 -y2);
+        P_Target[init-1].X = x1;
+        P_Target[init-1].Y = y1;
+        P_Target[init-1+num_cor].X = x2;
+        P_Target[init-1+num_cor].Y = y2;
+        if (y2 > y1)
+            plus_dec = 1;
+        else plus_dec = -1;
+        for (int i = init; i <init-1+ num_cor; i++)
+        {
+            P_Target[i].X = x1;
+            P_Target[i].Y = y1 + plus_dec*(i-init+1);
+        }
+    }
+    if (y1 == y2)
+    {
+        num_cor = abs(x1 - x2);
+        P_Target[init-1].X = x1;
+        P_Target[init-1].Y = y1;
+        P_Target[init-1+num_cor].X = x2;
+        P_Target[init-1+num_cor].Y = y2;
+        if (x2 > x1)
+            plus_dec = 1;
+        else plus_dec = -1;
+        for (int i = init; i < init-1+num_cor; i++)
+        {
+            P_Target[i].X = x1 + plus_dec*(i-init+1);
+            P_Target[i].Y = y1 ;
+        }
+    }
+    init = init + num_cor+1;
+    return init;
+}
+
+/*************    读电池参数    ******************************/
+void Datashare::readBattery(void)
+{
+    unsigned char array[50]={0};
+    unsigned char array2[50] ={0};
+    unsigned char array3[50] = {0};
+    unsigned char array4[50] = {0};
+    int number = 0;
+    QString str;
+    int batteryCollumTemp=0;
+    int batteryCurrentTemp=0;
+    int batteryVoltageTemp=0;
+    int batteryErrorTemp = 0;
+
+    tcflush(fd5,TCIOFLUSH);
+
+    write(fd5,readBatteryVoltage,sizeof(readBatteryVoltage));
+    delayTimeMsecs(25);
+    number = read(fd5,array3,sizeof(array3));
+    batteryVoltage = array3[3] * 255 + array3[4];
+    batteryVoltage = batteryVoltage * 0.001;
+
+
+    while((batteryVoltageTemp != batteryVoltage)||(batteryCurrentTemp != batteryCurrent)
+          ||(batteryCollumTemp != batteryCollum))
+    {
+        batteryVoltageTemp = batteryVoltage;
+        write(fd5,readBatteryVoltage,sizeof(readBatteryVoltage));
+        delayTimeMsecs(25);
+        number = read(fd5,array3,sizeof(array3));
+        batteryVoltage = array3[3] * 256 + array3[4];
+        batteryVoltage = batteryVoltage * 0.001;
+        for(int i=0;i<number;i++)
+        {
+            if(array3[i]<16)
+                str += '0' + QString::number(array3[i],16).toUpper();
+            else
+                str += QString::number(array3[i],16).toUpper();
+        }
+        batteryArray3 = str;
+        str.clear();
+
+
+        write(fd5,readBatteryError,sizeof(readBatteryError));
+        delayTimeMsecs(25);
+        number = read(fd5,array4,sizeof(array4));
+        for(int i=0;i<number;i++)
+        {
+            if(array4[i]<16)
+                str += '0' + QString::number(array4[i],16).toUpper();
+            else
+                str += QString::number(array4[i],16).toUpper();
+        }
+        batteryArray4 = str;
+        str.clear();
+
+        batteryCollumTemp = batteryCollum;
+        write(fd5,readBatteryCollum,sizeof(readBatteryCollum));
+        delayTimeMsecs(25);
+        number = read(fd5,array,sizeof(array));
+        batteryCollum = array[3] * 256 + array[4];
+        batteryCollum = batteryCollum * 0.4;
+        for(int i=0;i<number;i++)
+        {
+            if(array[i]<16)
+                str += '0' + QString::number(array[i],16).toUpper();
+            else
+                str += QString::number(array[i],16).toUpper();
+        }
+        batteryArray = str;
+        str.clear();
+
+        batteryCurrentTemp = batteryCurrent;
+        write(fd5,readBatteryCurrent,sizeof(readBatteryCurrent));
+        delayTimeMsecs(25);
+        number = read(fd5,array2,sizeof(array2));
+        batteryCurrent = array2[3] * 16 + array2[4];
+        batteryCurrent = batteryCurrent * 0.01;
+        for(int i=0;i<number;i++)
+        {
+            if(array[i]<16)
+                str += '0' + QString::number(array2[i],16).toUpper();
+            else
+                str += QString::number(array2[i],16).toUpper();
+        }
+        batteryArray2 = str;
+        str.clear();
+    }
+}
+
+void Datashare::warningRecord(void)
+{
+    int number = 0;
+    int number1 = 0;
+    unsigned char array[50] = {0};
+    unsigned char array1[50] = {0};
+    bool communicationErrorFlag = false;
+    int fdfile = 0;
+    warningFile.open(QIODevice::WriteOnly|QIODevice::Append);
+    QTextStream out(&warningFile);
+    QString a,b;
+
+    for(int i =0;i<6;i++)
+    {
+       switch (i) {
+       case 0:
+           fdfile = fd1;break;
+       case 1:
+           fdfile = fd2;break;
+       case 2:
+           fdfile = fd3;break;
+       case 3:
+           fdfile = fd4;break;
+       case 4:
+           fdfile = fd5;break;
+       case 5:
+           fdfile = fd6;break;
+       default:
+           break;
+       }
+       if(0==i | 1==i | 2==i | 3==i)
+       {
+           write(fdfile,readDriveBridgeStatus,sizeof(readDriveBridgeStatus));
+           delayTimeMsecs(100);
+           number = read(fdfile,array,sizeof(array));
+       }
+       if(4 == i)
+       {
+           write(fdfile,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+           delayTimeMsecs(100);
+           number = read(fdfile,array,sizeof(array));
+       }
+       if(5 == i)
+       {
+           write(fdfile,readInertialBuff,sizeof(readInertialBuff));
+           delayTimeMsecs(100);
+           number = read(fdfile,array,sizeof(array));
+       }
+       if(number <= 0)
+       {
+           a += QTime::currentTime().toString();
+           a += "  ";
+           a += b.setNum(i+1);
+           a += "号串口通信故障";
+           out<<a<<endl;
+           a.clear();b.clear();
+           communicationErrorFlag = true;
+       }
+       //memset(array,0,sizeof(unsigned char)*20);                   //清空array数组
+       for(int i=0;i<50;i++)
+       {
+           array[i] = 0;
+       }
+    }
+    if(!communicationErrorFlag)
+    {
+//       out<<QTime::currentTime().toString()<<'\t';
+       //a += QTime::currentTime().toString() + "  ";
+       for(int i=0;i<4;i++)
+       {
+           switch (i) {
+           case 0:
+               fdfile = fd1;
+               break;
+           case 1:
+               fdfile = fd2;break;
+           case 2:
+               fdfile = fd3;break;
+           case 3:
+               fdfile = fd4;break;
+           default:
+               break;
+           }
+           //memset(array,0,sizeof(unsigned char)*20);               //清空array数组
+           for(int i=0;i<50;i++)
+           {
+               array[i] = 0;
+           }
+           write(fdfile,readDriveProtectionStatus,sizeof(readDriveProtectionStatus));
+           number = read(fdfile,array,sizeof(array));
+           if(array[9]&0x01)  {driveReset[i]=1;         a += "驱动器"+ b.setNum(i+1) + "drive reset" + "  ";}
+           if(array[9]&0x02)  {driveInternalEror[i]=1;  a += "驱动器"+ b.setNum(i+1) + "internal error"+ "  ";}
+           if(array[9]&0x04)  {shortCircuit[i]=1;       a += "驱动器"+ b.setNum(i+1) + "short circuit" + "  ";}
+           if(array[9]&0x08)  {currentOverShoot[i]=1;   a += "驱动器"+ b.setNum(i+1) + "current over shoot" + "  ";}
+           if(array[9]&0x10)  {underVoltage[i]=1;       a += "驱动器"+ b.setNum(i+1) + "under voltage" + "  ";}
+           if(array[9]&0x20)  {overVoltage[i]=1;        a += "驱动器"+ b.setNum(i+1) + "over voltage" + "  ";}
+           if(array[9]&0x40)  {driveOverTemprature[i]=1;a += "驱动器"+ b.setNum(i+1) + "over temprature" + "  ";}
+
+//           memset(array,0,sizeof(unsigned char)*20);
+           for(int i=0;i<50;i++)
+           {
+               array[i] = 0;
+           }
+           write(fdfile,readSystemProtectionStatus,sizeof(readSystemProtectionStatus));
+           number=read(fdfile,array,sizeof(array));
+           if(array[8]&0x01)  {parameterRestoreError[i]=1;      a += "驱动器"+ b.setNum(i+1) + "parameter Restore Error" + "  ";}
+           if(array[8]&0x02)  {parameterStoreError[i] = 1;      a += "驱动器"+ b.setNum(i+1) + "parameter Store Error" + "  " ;}
+           if(array[8]&0x04)  {invalidHallState[i] = 1;         a += "驱动器"+ b.setNum(i+1) + "invalid Hall State" + "  ";}
+           if(array[8]&0x08)   {phaseSyncError[i] = 1;          a += "驱动器"+ b.setNum(i+1) + "phase Sync Error" + "  ";}
+           if(array[8]&0x10)   {motorOverTemprature[i]=1;       a += "电机"+ b.setNum(i+1) + "过温度" + "  ";}
+           if(array[8]&0x20)   {phaseDetectionFault[i]=1;       a += "驱动器"+ b.setNum(i+1) + "phase Detection Fault" + "  ";}
+           if(array[8]&0x40)   {feedBackSensorError[i]=1;       a += "驱动器"+ b.setNum(i+1) + "传感器反馈错误" + "  ";}
+           if(array[8]&0x80)   {motorOverSpeed[i]=1;            a += "驱动器"+ b.setNum(i+1) + "电机失速" + "  ";}
+           if(array[9]&0x01)   {}
+           if(array[9]&0x02)   {}
+           if(array[9]&0x04)   {comError[i]=1;                  a += "驱动器"+ b.setNum(i+1) + "驱动器与舵轮通信错误" + "  ";}
+           if(array[9]&0x08)   {PWMandDirBrokenWire[i];         a += "驱动器"+ b.setNum(i+1) + "PWM和方向断线"+ "  ";}
+           if(array[9]&0x10)   {motionEngineError[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎错误" + "  ";}
+           if(array[9]&0x20)   {motionEngineAbort[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎 abort" + "  ";}
+
+//           memset(array,0,sizeof(unsigned char)*20);
+           for(int i=0;i<50;i++)
+           {
+               array[i] = 0;
+           }
+           write(fdfile,readDriveSystemStatus2,sizeof(readDriveSystemStatus2));
+           number1=read(fdfile,array1,sizeof(array1));
+           if(array1[8]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
+           if(array1[8]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
+           if(array1[9]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
+           if(array1[9]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
+           if(array1[8]&0x01)    {zeroVelocity[i]=1;             a+= "舵轮"+ b.setNum(i+1) + "零速度" + "  ";}
+//           for(int i=0;i<number1;i++)
+//           {
+//               if(array1[i]<16)
+//                   a += '0' + QString::number(array1[i],16).toUpper();
+//               else
+//                   a += QString::number(array1[i],16).toUpper();
+//           }
+
+           //错误代码转变为变量
+       }
+       errorInformation.clear();
+       errorInformation += a;
+       a.prepend("  ");
+       a.prepend(QTime::currentTime().toString());
+
+        out<<a<<endl;
+        a.clear();b.clear();
+    }
+
+    out.flush();
+
+    warningFile.close();
+    breakFlag = true;
+    fileClearFlag = false;
+    errorReportFlag = true;
+
+}
 /*****************************************              ************************************************/
 
 

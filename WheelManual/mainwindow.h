@@ -3,6 +3,9 @@
 
 #include <QMainWindow>
 #include "datashare.h"
+#include "errorreportwindow.h"
+#include <QFile>
+#define pi 3.14159
 
 namespace Ui {
 class MainWindow;
@@ -16,6 +19,10 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     Datashare mptr;
+    QFile routeFile;
+    QFile yawFile;
+    bool dontShutDownFlag = true;
+    errorReportWindow *errorReport;
 
 public:
                                                                                         //read I/O and save the data
@@ -26,11 +33,19 @@ public:
 
     void wheelZeroCalibration(void);                                                    //calibrate the steering wheel to zero
 
-
-
 private slots:
 
     void ReadData ();
+
+    void reconnect();
+
+    void TCPconnected();
+
+    void readWifi();
+
+    void writeWifi();
+
+    void writeErrorInformation();
 
     void on_forwardButton_pressed();
 
@@ -112,10 +127,24 @@ private slots:
 
     void on_kdSpinBox_editingFinished();
 
+    void on_reconnectButton_clicked();
+
+    void on_manulCalibrationButton_clicked();
+
+    void on_clearFileButton_clicked();
+
+    void on_turnSpeedSetButton_clicked();
+
+    void on_errorReportButton_clicked();
+
+    void on_showErrorLogButton_clicked();
+
+
 private:
     Ui::MainWindow *ui;
 
     QTcpSocket *tcpSocket;
+    QTcpSocket *tcpSocket1;
 };
 
 #endif // MAINWINDOW_H
