@@ -21,6 +21,7 @@
 #include <QIODevice>
 #include <QFile>
 #include <QTextStream>
+#include <QTextCodec>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -67,14 +68,14 @@ MainWindow::MainWindow(QWidget *parent) :
     //ui->rotateButton->setEnabled(false);
     ui->kpSpinBox->setSingleStep(1.0);
     ui->kiSpinBox->setSingleStep(100);
-    ui->kdSpinBox->setSingleStep(10);
+    ui->kdSpinBox->setSingleStep(2);
     ui->kpSpinBox->setValue(60);
     ui->kiSpinBox->setValue(300);
-    ui->kdSpinBox->setValue(300);
+    ui->kdSpinBox->setValue(30);
     ui->turnSpeedSetEdit->setText(c1.setNum(mptr.wheelTurnSpeed));
     errorReport = new errorReportWindow(this);
 
-    write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
+//    write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
     mptr.systemOnLight = 0;
     mptr.alarmLight = 0;
     mptr.warmingLight = 0;
@@ -101,7 +102,7 @@ void MainWindow::initialTheSystem(void)
     mptr.readIO();                               //read I/O and store the data
     ui->CommunicationEdit->append(tr("%1 %2 %3").arg(mptr.systemOnFlag).arg(mptr.sickFalse).arg(mptr.sickWarningSpaceAlert));
 
-    write(mptr.fd5,mptr.seri_send_buzzer1,sizeof(mptr.seri_send_buzzer1));
+//    write(mptr.fd5,mptr.seri_send_buzzer1,sizeof(mptr.seri_send_buzzer1));
     mptr.systemOnLight = 1;
     mptr.alarmLight = 0;
     mptr.warmingLight = 0;
@@ -215,7 +216,7 @@ void MainWindow::initialTheSystem(void)
                   string1 += strTemp.setNum(mptr.P_Target3[i].Y) + "/";
               }
               ui->CommunicationEdit->append("new file:");
-                ui->CommunicationEdit->append(string1);
+//                ui->CommunicationEdit->append(string1);
               out<<string1<<endl;
               out.flush();
               routeFile.close();
@@ -242,13 +243,10 @@ void MainWindow::initialTheSystem(void)
                   mptr.getRouteFlag = false;                          //执行完成，清空标志位
                   mptr.numberOfTurnCentre = 0;                        //圆心数量
                   mptr.targetNumber = 0;                              //目标点数量
-                  mptr.numberOfTurnIn = 0;
-                  mptr.readBattery();                                   //读电池数据
+                  mptr.numberOfTurnIn = 0;                  
                   mptr.wheelMoveSpeedSet = mptr.wheelSpeedTarget;
                   mptr.breakFlag = false;
-                  ui->batteryCollumLabel->setNum(mptr.batteryCollum);
-                  ui->batteryCurrentLble->setNum(mptr.batteryCurrent);
-                  ui->batteryVoltageLable->setNum(mptr.batteryVoltage);
+
                   ui->labelOfMissionStatus->setText("任务已完成");
               }
           }
@@ -260,9 +258,12 @@ void MainWindow::initialTheSystem(void)
           writeWifi();                                //与上位机进行交互
 
         //ui->CommunicationEdit->append(tr("init "));
-
+        mptr.readBattery();                                   //读电池数据
+        ui->batteryCollumLabel->setNum(mptr.batteryCollum);
+        ui->batteryCurrentLble->setNum(mptr.batteryCurrent);
+        ui->batteryVoltageLable->setNum(mptr.batteryVoltage);
         QApplication::processEvents(QEventLoop::AllEvents,1000);
-        write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
+//        write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
 
         mptr.delayTimeMsecs(2000);
     }
@@ -284,6 +285,9 @@ void MainWindow::systemOn(void)
 //    mptr.breakFlag = false;
     mptr.wheelSpeedHold = mptr.wheelSpeedTarget;
     mptr.Speed_Td_x1 = 0;
+    mptr.Flag_Stop = false;
+    mptr.Flag_SpeedDe = false;
+    mptr.Flag_SpeedAdd = false;
 
     for(i=0;i<10;i++)  //采10次角度
     {
@@ -314,7 +318,7 @@ void MainWindow::systemOn(void)
     }
     mptr.yawLast = mptr.yaw;
 
-    write(mptr.fd5,mptr.seri_send_buzzer1,sizeof(mptr.seri_send_buzzer1));
+//    write(mptr.fd5,mptr.seri_send_buzzer1,sizeof(mptr.seri_send_buzzer1));
     mptr.alarmLight = 0;
     mptr.systemOnLight = 1;
     mptr.warmingLight = 0;
@@ -487,13 +491,14 @@ void MainWindow::systemOn(void)
     {
         mptr.wheelSpeedHold = 0;
         mptr.wheelMoveSpeedSet = 0;
-        if(fabs(mptr.Speed_Td_x1)>0.015)
+        if(fabs(mptr.Speed_Td_x1)>0.02)
         {
             mptr.Speed_h=0.01;
             mptr.Speed_Adj();
             if (mptr.Td_SpeedSet>mptr.wheelMoveSpeedSetMax)
                 mptr.Td_SpeedSet = mptr.wheelMoveSpeedSetMax;
-
+            if(mptr.Speed_Td_x1 <=0 || mptr.Speed_Td_x1 > 2)
+                mptr.Speed_Td_x1 = 0;
              mptr.writeWheelSpeed(mptr.Td_SpeedSet,00,mptr.commanData);	//生成速度设置报文
              write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));			//发送速度设置报文到驱动器
              read(mptr.fd1,array,sizeof(array));									//读取串口缓冲区，主要目的是为了清除缓冲区为之后读取速度留下空间。
@@ -520,7 +525,7 @@ void MainWindow::systemOn(void)
 	ui->CommunicationEdit->append("Halt Success!");
 
     mptr.delayTimeMsecs(30);
-    write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
+//    write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
     mptr.systemOnLight = 0;
     mptr.alarmLight = 0;
     mptr.warmingLight = 0;
@@ -529,9 +534,22 @@ void MainWindow::systemOn(void)
     mptr.sickC = 0;
 	mptr.writeIO();
 
+    QString strError;
+    QTextStream out(&mptr.warningFile);
     if(mptr.errorReportFlag)
     {
+        if(mptr.lostQRCodeFlag)
+        {
+            mptr.errorInformation += QTime::currentTime().toString() + "  ";
+            mptr.errorInformation += "丢码停车";
+            mptr.warningFile.open(QIODevice::WriteOnly|QIODevice::Append);
+            strError.clear();
+            strError += QTime::currentTime().toString() + "  " + "丢码停车";
+            out<<strError<<endl; out.flush();strError.clear();
+            mptr.warningFile.close();
+        }
         ui->CommunicationEdit->append("错误！请从文件中提取信息");
+        ui->CommunicationEdit->append(mptr.errorInformation);
         writeErrorInformation();
         mptr.errorReportFlag = false;
 
@@ -621,7 +639,7 @@ void MainWindow::readWifi()
 
         //QByteArray splitCoeffcient= ":";
         //tcpSocket 清除缓冲区
-        if((buffer != bufTemp))
+//        if((buffer != bufTemp))
         {
             bufTemp = buffer;
             mptr.bufWifi = buffer;
@@ -753,13 +771,23 @@ void MainWindow::writeWifi(void)
 void MainWindow::writeErrorInformation()
 {
     QString a;
+//    QTextCodec *code = QTextCodec::codecForName("GBK");
+//    QTextCodec::setCodecForLocale(code);
+
+
     a += mptr.errorInformation;
-    a.prepend("error:");
+    a.prepend("err:");
+    a += ";end";
     QByteArray message;
-    message = a.toLocal8Bit();
+    message = a.toUtf8();
+
+//    message = a.tou;
+//    a = code->toUnicode(a.toLocal8Bit());
+
     tcpSocket1->write(message);
 
     mptr.errorInformation.clear();
+//    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 }
 
 /***********************前进按钮，按压前进，速度为设定值***************************************************************************************/
@@ -1344,6 +1372,7 @@ void MainWindow::on_autoRunButton_clicked()
     mptr.breakFlag = false;
     mptr.fileClearFlag = true;
     mptr.initialReady = true;
+//    mptr.lostQRCodeFlag = false;
 //    if (mptr.wheelMoveSpeedSet==500||mptr.wheelMoveSpeedSet==1000||mptr.wheelMoveSpeedSet==1500)
 //        mptr.wheelMoveSpeedSet=500;
 
@@ -1394,6 +1423,7 @@ void MainWindow::on_stopAutorunButton_clicked()
     mptr.breakFlag = true;
     mptr.fileClearFlag = false;
     mptr.initialReady = false;
+    mptr.lostQRCodeFlag = false;
 }
 
 /*******************************舵机转向轮校零函数*******************************************************************************/
@@ -1566,6 +1596,8 @@ void MainWindow::wheelZeroCalibration()
         mptr.calibrationFlag = true;
 //        write(mptr.fd2,mptr.resetcommand,sizeof(mptr.resetcommand));read(mptr.fd2,array,sizeof(array));
     }
+    mptr.wheelAngle2 = 0;
+    mptr.wheelAngle4 = 0;
 
 
 }
@@ -1591,9 +1623,9 @@ void MainWindow::showIOResult()
             {
                 mptr.warningFile.open(QIODevice::WriteOnly|QIODevice::Append);
                 s.clear();
-                s += QTime::currentTime().toString() + "触边或急停按钮触发" +"  ";
+                s += QTime::currentTime().toString() + "触边、急停或sick保护区出发" +"  ";
                 out<<s<<endl; out.flush();s.clear();
-                ui->CommunicationEdit->append("触边或急停按钮触发");
+                ui->CommunicationEdit->append("触边、急停或sick保护区出发");
                 count++;
                 mptr.warningFile.close();
             }
@@ -2031,3 +2063,9 @@ void MainWindow::on_showErrorLogButton_clicked()
 }
 
 
+
+void MainWindow::on_setCameraAngleButton_clicked()
+{
+    mptr.ka_for = ui->ka_forDoubleSpinBox->value();
+    mptr.ka_ba = ui->ka_baDoubleSpinBox->value();
+}

@@ -797,38 +797,38 @@ void Datashare::checkIO()
     {
         if (sickWarningSpaceAlert && (!sickFalse) )
         {
-            if(wheelMoveSpeedSet > 0.3)
-                wheelMoveSpeedSet = 0.3;
+          //  if(wheelMoveSpeedSet > 0.3)
+             //   wheelMoveSpeedSet = 0.3;
             systemOnLight = 0;
             warmingLight = 1;
             alarmLight = 0;
             sickFlag = true;
-            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+           // write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
         }      //  unit: r/min ,fix in the future.
 
         if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
         {
-            if(AGVSpeed <= 0.05)
-                wheelMoveSpeedSet = 0.08;
-            else
+           // if(AGVSpeed <= 0.05)
+              //  wheelMoveSpeedSet = 0.08;
+           // else
             {
-                wheelMoveSpeedSet = wheelSpeedHold;
+               // wheelMoveSpeedSet = wheelSpeedHold;
                 sickFlag = false;
             }
             systemOnLight = 1;
             warmingLight = 0;
             alarmLight = 0;
-            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+           // write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
         }// The space is available, and add the speed upper limit.
 
         if (sickWarningSpaceAlert & sickFalse)
         {
-            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+           // wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
             sickFlag = true;
             systemOnLight = 0;
             warmingLight = 0;
             alarmLight = 1;
-            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+            //write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
         }
         if ( AGVSpeed >= 0.32 )                          {sickA=0; sickB=0; sickC=1;}
         if ( AGVSpeed < 0.32 )                          {sickA=0; sickB=1; sickC=0;}
@@ -837,39 +837,39 @@ void Datashare::checkIO()
     {
         if (sickWarningSpaceAlert && (!sickFalse) )
         {
-            if(wheelMoveSpeedSet < -0.3)
-                wheelMoveSpeedSet = -0.3;
+          //  if(wheelMoveSpeedSet < -0.3)
+            //    wheelMoveSpeedSet = -0.3;
             systemOnLight = 0;
             warmingLight = 1;
             alarmLight = 0;
             sickFlag = true;
-            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+            //write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
         }      //  unit: r/min ,fix in the future.
 
         if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
         {
-            if(AGVSpeed >= -0.05)
-                wheelMoveSpeedSet = -0.08;
-            else
+           // if(AGVSpeed >= -0.05)
+              //  wheelMoveSpeedSet = -0.08;
+           // else
             {
-                wheelMoveSpeedSet = wheelSpeedHold;
+              //  wheelMoveSpeedSet = wheelSpeedHold;
                 sickFlag = false;
             }
             systemOnLight = 1;
             warmingLight = 0;
             alarmLight = 0;
 
-            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+           // write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
         }// The space is available, and add the speed upper limit.
 
         if (sickWarningSpaceAlert & sickFalse)
         {
-            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+          //  wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
             sickFlag = true;
             systemOnLight = 0;
             warmingLight = 0;
             alarmLight = 1;
-            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+           // write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
         }
         if ( AGVSpeed >= -0.32 )                          {sickA=0; sickB=1; sickC=1;}
         if ( AGVSpeed < -0.32 )                          {sickA=1; sickB=1; sickC=0;}
@@ -1231,7 +1231,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
     options.c_oflag &= ~OPOST ;
 
     options.c_cc [VMIN]  =   0 ;
-    options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+    options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
 
   tcsetattr (fd, TCSANOW, &options) ;
 
@@ -1256,7 +1256,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
 	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
 	options.c_oflag &= ~OPOST ;
 	options.c_cc [VMIN]  =   0 ;
-	options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+    options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
 	tcsetattr (fd1, TCSANOW, &options) ;
 	ioctl (fd1, TIOCMGET, &status);
 	status |= TIOCM_DTR ;
@@ -1278,7 +1278,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
 	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
 	options.c_oflag &= ~OPOST ;
 	options.c_cc [VMIN]  =   0 ;
-	options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+    options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
 	tcsetattr (fd2, TCSANOW, &options) ;
 	ioctl (fd2, TIOCMGET, &status);
 	status |= TIOCM_DTR ;
@@ -1299,7 +1299,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
 	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
 	options.c_oflag &= ~OPOST ;
 	options.c_cc [VMIN]  =   0 ;
-	options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+    options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
 	tcsetattr (fd3, TCSANOW, &options) ;
 	ioctl (fd3, TIOCMGET, &status);
 	status |= TIOCM_DTR ;
@@ -1320,7 +1320,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
 	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
 	options.c_oflag &= ~OPOST ;
 	options.c_cc [VMIN]  =   0 ;
-	options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+    options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
 	tcsetattr (fd4, TCSANOW, &options) ;
 	ioctl (fd4, TIOCMGET, &status);
 	status |= TIOCM_DTR ;
@@ -1341,7 +1341,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
       options1.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
       options1.c_oflag &= ~OPOST ;
       options1.c_cc [VMIN]  =   0 ;
-      options1.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+      options1.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
       tcsetattr (fd5, TCSANOW, &options1) ;
       ioctl (fd5, TIOCMGET, &status1);
       status1 |= TIOCM_DTR ;
@@ -1362,7 +1362,7 @@ int Datashare::openSerial (const char *device, const char *device2, const char *
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
         options.c_oflag &= ~OPOST ;
         options.c_cc [VMIN]  =   0 ;
-        options.c_cc [VTIME] = 100 ;	// Ten seconds (100 deciseconds)
+        options.c_cc [VTIME] = 10 ;	// Ten seconds (100 deciseconds)
         tcsetattr (fd6, TCSANOW, &options) ;
         ioctl (fd6, TIOCMGET, &status);
         status |= TIOCM_DTR ;
@@ -1687,15 +1687,15 @@ double Datashare::Information_Corrective()
     {
         if(turn_flag==false)
         {
-            if(direction_flag == true)
+            if(direction_flag == true)  //前进偏右要加
             {
-               yawInt = yaw-90-Angle_Error-Num_Turn*90;//坐标系的重建
-               yawTarget = yaw - Angle_Error;//目标方向修正
+               yawInt = yaw-90-Angle_Error-ka_for-Num_Turn*90;//坐标系的重建0.2  //0.4
+               yawTarget = yaw - Angle_Error-ka_for;//目标方向修正0.2
             }
-            else
+            else     //后退偏右要减
             {
-                yawInt = yaw-90-Angle_Error-0.3-Num_Turn*90;//坐标系的重建//0.35
-                yawTarget = yaw - Angle_Error-0.3;//目标方向修正
+                yawInt = yaw-90-Angle_Error-ka_ba-Num_Turn*90;//坐标系的重建//0.3
+                yawTarget = yaw - Angle_Error-ka_ba;//目标方向修正
             }
             //yawInt = yaw-90-Angle_Error-0.2-Num_Turn*90;//坐标系的重建
             while(yawInt<0||yawInt>=360)
@@ -1772,7 +1772,7 @@ double Datashare::Position_PID2 (double delta,bool flag)
 
      if(flag==false)
      {
-         if(fabs(AGVSpeed)<=0.35)
+         if(fabs(AGVSpeed)<=0.4)
          {
              KP=14;
              KD=1250;
@@ -1821,11 +1821,23 @@ double Datashare::Position_PID2 (double delta,bool flag)
      else
      {
          KP_Line=(delta*delta)*KI_turn+KP_turn;
-         Integral_delta_turn+=delta;	                                 //Çó³öÆ«²îµÄ»ý·Ö
+         Integral_delta_turn+=delta;
          if(Integral_delta_turn>300)
              Integral_delta_turn=300;
          if(Integral_delta_turn<-300)
              Integral_delta_turn=-300;
+
+//         if(direction_flag)
+//         {
+//             KP_turn = 57;
+//           //  KI_turn = 30;
+//         }
+//         else
+//         {
+//             KP_turn = 58;
+//            // KI_turn = 30;
+//         }
+
          //Pwm=KP_turn*delta+KI_turn*Integral_delta_turn+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Pwm=KP_turn*delta+KD_turn*(delta_s-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
          Last_delta_turn=delta;
@@ -2445,9 +2457,10 @@ double Datashare::Go2 (Position P_Targets )
 
   if(turn_flag == false)
   {
-      if(Dis_protec >= 5) //检测不到二维码停车
+      if(Dis_protec >= 7) //检测不到二维码停车
       {
           wheelMoveSpeedSet = 0;
+          lostQRCodeFlag = true;
 //          breakFlag = true;
 //          fileClearFlag =false;
       }
@@ -2493,6 +2506,20 @@ double Datashare::Go2 (Position P_Targets )
                       if(P_Target[num+3].X==P_Target[targetNumber-1].X)
                       {
                           if(P_Target[num+3].Y==P_Target[targetNumber-1].Y)
+                          {
+                              if(direction_flag == true)
+                                  wheelMoveSpeedSet = 0.3;  //停车前三个二维码减速
+                              else
+                                  wheelMoveSpeedSet = -0.3;
+                          }
+                      }
+                  }
+
+                  if(fabs(wheelMoveSpeedSet) > 0.3 )
+                  {
+                      if(P_Target[num+2].X==P_Target[targetNumber-1].X)
+                      {
+                          if(P_Target[num+2].Y==P_Target[targetNumber-1].Y)
                           {
                               if(direction_flag == true)
                                   wheelMoveSpeedSet = 0.3;  //停车前三个二维码减速
@@ -2896,7 +2923,7 @@ void Datashare::Code_Init()
        //读惯导角度
        write(fd6,readInertialBuff,sizeof(readInertialBuff));
        delayTimeMsecs(8);
-       int numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
+       int numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
        //ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
        yaw = angle_trans(arrayTemp[4],arrayTemp[3])-yaw_error;
        while(yaw>=360||yaw<0)
@@ -3049,161 +3076,167 @@ void Datashare::readBattery(void)
 
 void Datashare::warningRecord(void)
 {
-    int number = 0;
-    int number1 = 0;
-    unsigned char array[50] = {0};
-    unsigned char array1[50] = {0};
-    bool communicationErrorFlag = false;
-    int fdfile = 0;
-    warningFile.open(QIODevice::WriteOnly|QIODevice::Append);
-    QTextStream out(&warningFile);
-    QString a,b;
+    if(!errorReportFlag)
+    {
+        int number = 0;
+        int number1 = 0;
+        unsigned char array[50] = {0};
+        unsigned char array1[50] = {0};
+        bool communicationErrorFlag = false;
+        int fdfile = 0;
+        warningFile.open(QIODevice::WriteOnly|QIODevice::Append);
+        QTextStream out(&warningFile);
+        QString a,b;
 
-    for(int i =0;i<6;i++)
-    {
-       switch (i) {
-       case 0:
-           fdfile = fd1;break;
-       case 1:
-           fdfile = fd2;break;
-       case 2:
-           fdfile = fd3;break;
-       case 3:
-           fdfile = fd4;break;
-       case 4:
-           fdfile = fd5;break;
-       case 5:
-           fdfile = fd6;break;
-       default:
-           break;
-       }
-       if(0==i | 1==i | 2==i | 3==i)
-       {
-           write(fdfile,readDriveBridgeStatus,sizeof(readDriveBridgeStatus));
-           delayTimeMsecs(100);
-           number = read(fdfile,array,sizeof(array));
-       }
-       if(4 == i)
-       {
-           write(fdfile,seri_send_buzzer1,sizeof(seri_send_buzzer1));
-           delayTimeMsecs(100);
-           number = read(fdfile,array,sizeof(array));
-       }
-       if(5 == i)
-       {
-           write(fdfile,readInertialBuff,sizeof(readInertialBuff));
-           delayTimeMsecs(100);
-           number = read(fdfile,array,sizeof(array));
-       }
-       if(number <= 0)
-       {
-           a += QTime::currentTime().toString();
-           a += "  ";
-           a += b.setNum(i+1);
-           a += "号串口通信故障";
-           out<<a<<endl;
-           a.clear();b.clear();
-           communicationErrorFlag = true;
-       }
-       //memset(array,0,sizeof(unsigned char)*20);                   //清空array数组
-       for(int i=0;i<50;i++)
-       {
-           array[i] = 0;
-       }
-    }
-    if(!communicationErrorFlag)
-    {
-//       out<<QTime::currentTime().toString()<<'\t';
-       //a += QTime::currentTime().toString() + "  ";
-       for(int i=0;i<4;i++)
-       {
+        for(int i =0;i<6;i++)
+        {
            switch (i) {
            case 0:
-               fdfile = fd1;
-               break;
+               fdfile = fd1;break;
            case 1:
                fdfile = fd2;break;
            case 2:
                fdfile = fd3;break;
            case 3:
                fdfile = fd4;break;
+           case 4:
+               fdfile = fd5;break;
+           case 5:
+               fdfile = fd6;break;
            default:
                break;
            }
-           //memset(array,0,sizeof(unsigned char)*20);               //清空array数组
+           if(0==i | 1==i | 2==i | 3==i)
+           {
+               write(fdfile,readDriveBridgeStatus,sizeof(readDriveBridgeStatus));
+               delayTimeMsecs(100);
+               number = read(fdfile,array,sizeof(array));
+           }
+           if(4 == i)
+           {
+               write(fdfile,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+               delayTimeMsecs(100);
+               number = read(fdfile,array,sizeof(array));
+           }
+           if(5 == i)
+           {
+               write(fdfile,readInertialBuff,sizeof(readInertialBuff));
+               delayTimeMsecs(100);
+               number = read(fdfile,array,sizeof(array));
+           }
+           if(number <= 0)
+           {
+               //a += QTime::currentTime().toString();
+               //a += "  ";
+               a += b.setNum(i+1);
+               a += "号串口通信故障";
+               errorInformation += a + "  ";
+               a.prepend("  ");
+               a.prepend(QTime::currentTime().toString());
+               out<<a<<endl;
+               a.clear();b.clear();
+               communicationErrorFlag = true;
+           }
+           //memset(array,0,sizeof(unsigned char)*20);                   //清空array数组
            for(int i=0;i<50;i++)
            {
                array[i] = 0;
            }
-           write(fdfile,readDriveProtectionStatus,sizeof(readDriveProtectionStatus));
-           number = read(fdfile,array,sizeof(array));
-           if(array[9]&0x01)  {driveReset[i]=1;         a += "驱动器"+ b.setNum(i+1) + "drive reset" + "  ";}
-           if(array[9]&0x02)  {driveInternalEror[i]=1;  a += "驱动器"+ b.setNum(i+1) + "internal error"+ "  ";}
-           if(array[9]&0x04)  {shortCircuit[i]=1;       a += "驱动器"+ b.setNum(i+1) + "short circuit" + "  ";}
-           if(array[9]&0x08)  {currentOverShoot[i]=1;   a += "驱动器"+ b.setNum(i+1) + "current over shoot" + "  ";}
-           if(array[9]&0x10)  {underVoltage[i]=1;       a += "驱动器"+ b.setNum(i+1) + "under voltage" + "  ";}
-           if(array[9]&0x20)  {overVoltage[i]=1;        a += "驱动器"+ b.setNum(i+1) + "over voltage" + "  ";}
-           if(array[9]&0x40)  {driveOverTemprature[i]=1;a += "驱动器"+ b.setNum(i+1) + "over temprature" + "  ";}
-
-//           memset(array,0,sizeof(unsigned char)*20);
-           for(int i=0;i<50;i++)
+        }
+        if(!communicationErrorFlag)
+        {
+    //       out<<QTime::currentTime().toString()<<'\t';
+           //a += QTime::currentTime().toString() + "  ";
+           for(int i=0;i<4;i++)
            {
-               array[i] = 0;
+               switch (i) {
+               case 0:
+                   fdfile = fd1;
+                   break;
+               case 1:
+                   fdfile = fd2;break;
+               case 2:
+                   fdfile = fd3;break;
+               case 3:
+                   fdfile = fd4;break;
+               default:
+                   break;
+               }
+               //memset(array,0,sizeof(unsigned char)*20);               //清空array数组
+               for(int i=0;i<50;i++)
+               {
+                   array[i] = 0;
+               }
+               write(fdfile,readDriveProtectionStatus,sizeof(readDriveProtectionStatus));
+               number = read(fdfile,array,sizeof(array));
+               if(array[9]&0x01)  {driveReset[i]=1;         a += "驱动器"+ b.setNum(i+1) + "drive reset" + "  ";}
+               if(array[9]&0x02)  {driveInternalEror[i]=1;  a += "驱动器"+ b.setNum(i+1) + "internal error"+ "  ";}
+               if(array[9]&0x04)  {shortCircuit[i]=1;       a += "驱动器"+ b.setNum(i+1) + "short circuit" + "  ";}
+               if(array[9]&0x08)  {currentOverShoot[i]=1;   a += "驱动器"+ b.setNum(i+1) + "current over shoot" + "  ";}
+               if(array[9]&0x10)  {underVoltage[i]=1;       a += "驱动器"+ b.setNum(i+1) + "under voltage" + "  ";}
+               if(array[9]&0x20)  {overVoltage[i]=1;        a += "驱动器"+ b.setNum(i+1) + "over voltage" + "  ";}
+               if(array[9]&0x40)  {driveOverTemprature[i]=1;a += "驱动器"+ b.setNum(i+1) + "over temprature" + "  ";}
+
+    //           memset(array,0,sizeof(unsigned char)*20);
+               for(int i=0;i<50;i++)
+               {
+                   array[i] = 0;
+               }
+               write(fdfile,readSystemProtectionStatus,sizeof(readSystemProtectionStatus));
+               number=read(fdfile,array,sizeof(array));
+               if(array[8]&0x01)  {parameterRestoreError[i]=1;      a += "驱动器"+ b.setNum(i+1) + "parameter Restore Error" + "  ";}
+               if(array[8]&0x02)  {parameterStoreError[i] = 1;      a += "驱动器"+ b.setNum(i+1) + "parameter Store Error" + "  " ;}
+               if(array[8]&0x04)  {invalidHallState[i] = 1;         a += "驱动器"+ b.setNum(i+1) + "invalid Hall State" + "  ";}
+               if(array[8]&0x08)   {phaseSyncError[i] = 1;          a += "驱动器"+ b.setNum(i+1) + "phase Sync Error" + "  ";}
+               if(array[8]&0x10)   {motorOverTemprature[i]=1;       a += "电机"+ b.setNum(i+1) + "过温度" + "  ";}
+               if(array[8]&0x20)   {phaseDetectionFault[i]=1;       a += "驱动器"+ b.setNum(i+1) + "phase Detection Fault" + "  ";}
+               if(array[8]&0x40)   {feedBackSensorError[i]=1;       a += "驱动器"+ b.setNum(i+1) + "传感器反馈错误" + "  ";}
+               if(array[8]&0x80)   {motorOverSpeed[i]=1;            a += "驱动器"+ b.setNum(i+1) + "电机失速" + "  ";}
+               if(array[9]&0x01)   {}
+               if(array[9]&0x02)   {}
+               if(array[9]&0x04)   {comError[i]=1;                  a += "驱动器"+ b.setNum(i+1) + "驱动器与舵轮通信错误" + "  ";}
+               if(array[9]&0x08)   {PWMandDirBrokenWire[i];         a += "驱动器"+ b.setNum(i+1) + "PWM和方向断线"+ "  ";}
+               if(array[9]&0x10)   {motionEngineError[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎错误" + "  ";}
+               if(array[9]&0x20)   {motionEngineAbort[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎 abort" + "  ";}
+
+    //           memset(array,0,sizeof(unsigned char)*20);
+               for(int i=0;i<50;i++)
+               {
+                   array[i] = 0;
+               }
+               write(fdfile,readDriveSystemStatus2,sizeof(readDriveSystemStatus2));
+               number1=read(fdfile,array1,sizeof(array1));
+               if(array1[8]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
+               if(array1[8]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
+            //    if(array1[9]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
+            //    if(array1[9]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
+               if(array1[8]&0x01)    {zeroVelocity[i]=1;             a+= "舵轮"+ b.setNum(i+1) + "零速度" + "  ";}
+    //           for(int i=0;i<number1;i++)
+    //           {
+    //               if(array1[i]<16)
+    //                   a += '0' + QString::number(array1[i],16).toUpper();
+    //               else
+    //                   a += QString::number(array1[i],16).toUpper();
+    //           }
+
+               //错误代码转变为变量
            }
-           write(fdfile,readSystemProtectionStatus,sizeof(readSystemProtectionStatus));
-           number=read(fdfile,array,sizeof(array));
-           if(array[8]&0x01)  {parameterRestoreError[i]=1;      a += "驱动器"+ b.setNum(i+1) + "parameter Restore Error" + "  ";}
-           if(array[8]&0x02)  {parameterStoreError[i] = 1;      a += "驱动器"+ b.setNum(i+1) + "parameter Store Error" + "  " ;}
-           if(array[8]&0x04)  {invalidHallState[i] = 1;         a += "驱动器"+ b.setNum(i+1) + "invalid Hall State" + "  ";}
-           if(array[8]&0x08)   {phaseSyncError[i] = 1;          a += "驱动器"+ b.setNum(i+1) + "phase Sync Error" + "  ";}
-           if(array[8]&0x10)   {motorOverTemprature[i]=1;       a += "电机"+ b.setNum(i+1) + "过温度" + "  ";}
-           if(array[8]&0x20)   {phaseDetectionFault[i]=1;       a += "驱动器"+ b.setNum(i+1) + "phase Detection Fault" + "  ";}
-           if(array[8]&0x40)   {feedBackSensorError[i]=1;       a += "驱动器"+ b.setNum(i+1) + "传感器反馈错误" + "  ";}
-           if(array[8]&0x80)   {motorOverSpeed[i]=1;            a += "驱动器"+ b.setNum(i+1) + "电机失速" + "  ";}
-           if(array[9]&0x01)   {}
-           if(array[9]&0x02)   {}
-           if(array[9]&0x04)   {comError[i]=1;                  a += "驱动器"+ b.setNum(i+1) + "驱动器与舵轮通信错误" + "  ";}
-           if(array[9]&0x08)   {PWMandDirBrokenWire[i];         a += "驱动器"+ b.setNum(i+1) + "PWM和方向断线"+ "  ";}
-           if(array[9]&0x10)   {motionEngineError[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎错误" + "  ";}
-           if(array[9]&0x20)   {motionEngineAbort[i];           a += "驱动器"+ b.setNum(i+1) + "电机引擎 abort" + "  ";}
+    //       errorInformation.clear();
+           errorInformation += a;
+           a.prepend("  ");
+           a.prepend(QTime::currentTime().toString());
 
-//           memset(array,0,sizeof(unsigned char)*20);
-           for(int i=0;i<50;i++)
-           {
-               array[i] = 0;
-           }
-           write(fdfile,readDriveSystemStatus2,sizeof(readDriveSystemStatus2));
-           number1=read(fdfile,array1,sizeof(array1));
-           if(array1[8]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
-           if(array1[8]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
-           if(array1[9]&0x04)    {velocityFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "速度跟随错误" + "  "; }
-           if(array1[9]&0x80)    {positionFollowingError[i]=1;   a+= "驱动器"+ b.setNum(i+1) + "位置跟随错误" + "  ";}
-           if(array1[8]&0x01)    {zeroVelocity[i]=1;             a+= "舵轮"+ b.setNum(i+1) + "零速度" + "  ";}
-//           for(int i=0;i<number1;i++)
-//           {
-//               if(array1[i]<16)
-//                   a += '0' + QString::number(array1[i],16).toUpper();
-//               else
-//                   a += QString::number(array1[i],16).toUpper();
-//           }
+            out<<a<<endl;
+            a.clear();b.clear();
+        }
 
-           //错误代码转变为变量
-       }
-       errorInformation.clear();
-       errorInformation += a;
-       a.prepend("  ");
-       a.prepend(QTime::currentTime().toString());
+        out.flush();
 
-        out<<a<<endl;
-        a.clear();b.clear();
+        warningFile.close();
+        breakFlag = true;
+        fileClearFlag = false;
+        errorReportFlag = true;
     }
-
-    out.flush();
-
-    warningFile.close();
-    breakFlag = true;
-    fileClearFlag = false;
-    errorReportFlag = true;
 
 }
 /*****************************************              ************************************************/

@@ -140,6 +140,10 @@ private slots:
     void on_showErrorLogButton_clicked();
 
 
+    void on_setCameraAngleButton_clicked();
+
+    void on_kpSpinBox_editingFinished();
+
 private:
     Ui::MainWindow *ui;
 

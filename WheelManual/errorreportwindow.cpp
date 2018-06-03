@@ -37,4 +37,5 @@ void errorReportWindow::on_clearFileButton_clicked()
     errorFile.open(QIODevice::WriteOnly);
     errorFile.close();
     ui->errorReportEdit->append("清除完成");
+    ui->errorReportEdit->clear();
 }

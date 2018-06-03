@@ -510,6 +510,9 @@
          <property name="singleStep">
           <double>0.010000000000000</double>
          </property>
+         <property name="value">
+          <double>60.000000000000000</double>
+         </property>
         </widget>
        </item>
        <item>
@@ -538,6 +541,9 @@
          </property>
          <property name="singleStep">
           <double>0.001000000000000</double>
+         </property>
+         <property name="value">
+          <double>30.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -910,6 +916,77 @@
     </property>
     <property name="text">
      <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QDoubleSpinBox" name="ka_forDoubleSpinBox">
+    <property name="geometry">
+     <rect>
+      <x>460</x>
+      <y>440</y>
+      <width>62</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="singleStep">
+     <double>0.100000000000000</double>
+    </property>
+    <property name="value">
+     <double>0.300000000000000</double>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_8">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>450</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ka_for</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_11">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>450</y>
+      <width>54</width>
+      <height>12</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ka_ba</string>
+    </property>
+   </widget>
+   <widget class="QDoubleSpinBox" name="ka_baDoubleSpinBox">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>440</y>
+      <width>62</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="singleStep">
+     <double>0.100000000000000</double>
+    </property>
+    <property name="value">
+     <double>0.300000000000000</double>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="setCameraAngleButton">
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>440</y>
+      <width>91</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>setCameraAng</string>
     </property>
    </widget>
   </widget>

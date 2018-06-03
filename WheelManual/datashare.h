@@ -159,9 +159,10 @@ public:
     bool Flag_Stop = false;
     bool oldRouteExistFlag = true;  //旧路径存在标志位
     bool getRouteFlag = false;      //取得新路径标志
-    bool TCPconnectFlag = false;
-    bool fileClearFlag = false;
-    bool errorReportFlag = false;
+    bool TCPconnectFlag = false;    //tcp连接标志位
+    bool fileClearFlag = false;     //清空文件标志位
+    bool errorReportFlag = false;   //错误报告标志位
+    bool lostQRCodeFlag = false;    //丢码停车标志位
 
     QString batteryArray;                           //显示电池报文用
     QString batteryArray2;
@@ -211,7 +212,8 @@ public:
         double NL_r = 900;
         double NL_h1 = 0.4;
         double Pos_u0 = 0;
-
+    double ka_for = 0;
+    double ka_ba = 0;
     double KP = 14.0;                                        //PID coefficient
     double KI = 0;
     double KD = 1250.0;//1250.0
@@ -221,7 +223,7 @@ public:
     double KD_Angle = 0.4;
 
 
-    double KP_turn=60.0;
+    double KP_turn=56.0;
     double KI_turn=0;
     double KD_turn=30.0;
 
@@ -289,8 +291,9 @@ public:
                               {-13.94,2},{-14.06,2},{-5.5,0},{-8.5,0},{-9,0.06},{-9,-0.06},{-6.94,2},{-7.06,2},{-1.5,0},{-7,1.5},
                               {-14,1.5},{-15.5,0},{-19.5,0},{-21,1.5},{-21,7.5},{-19.5,9},{-15.5,9},{-14,7.5},{-12.5,9},{-8.5,9},
                               {-7,7.5},{-1.5,9},{0,7.5},{0,1.5},{-12.5,0},{-5.5,9},{-14,7},{0,9.5},{0,10},{0,9.25},
-                              {-21.5,0},{-22,0},{-21.25,0},{-7,7},{-7,6},{0,7.5},{-2,-0.06},{-2,0.06},{0.06,2},{-0.06,2}};//二维码坐标位置
-                                  //14
+                              {-21.5,0},{-22,0},{-21.25,0},{-20,0},{-20,-0.06},{0,7.5},{-20,0},{-1,9},{-20,0},{-21,0},
+                              {-21.06,8},{-20,-0.06},{-20,-0.06},{-7,7},{-7,6},{0,7.5},{-20,0},{-1,9},{-20,0},{-21,0}};//二维码坐标位置
+                                  //15
       Position P_Target[100] = { {0,0} };//路径坐标
 /***
         Position P_Target[100] = { {-2,0},{-3,0},{-4,0},{-5,0},{-6,0},
