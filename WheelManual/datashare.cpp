@@ -3169,13 +3169,13 @@ void Datashare::warningRecord(void)
                }
                write(fdfile,readDriveProtectionStatus,sizeof(readDriveProtectionStatus));
                number = read(fdfile,array,sizeof(array));
-               if(array[9]&0x01)  {driveReset[i]=1;         a += "驱动器"+ b.setNum(i+1) + "drive reset" + "  ";}
-               if(array[9]&0x02)  {driveInternalEror[i]=1;  a += "驱动器"+ b.setNum(i+1) + "internal error"+ "  ";}
-               if(array[9]&0x04)  {shortCircuit[i]=1;       a += "驱动器"+ b.setNum(i+1) + "short circuit" + "  ";}
-               if(array[9]&0x08)  {currentOverShoot[i]=1;   a += "驱动器"+ b.setNum(i+1) + "current over shoot" + "  ";}
-               if(array[9]&0x10)  {underVoltage[i]=1;       a += "驱动器"+ b.setNum(i+1) + "under voltage" + "  ";}
-               if(array[9]&0x20)  {overVoltage[i]=1;        a += "驱动器"+ b.setNum(i+1) + "over voltage" + "  ";}
-               if(array[9]&0x40)  {driveOverTemprature[i]=1;a += "驱动器"+ b.setNum(i+1) + "over temprature" + "  ";}
+               if(array[8]&0x01)  {driveReset[i]=1;         a += "驱动器"+ b.setNum(i+1) + "drive reset" + "  ";}
+               if(array[8]&0x02)  {driveInternalEror[i]=1;  a += "驱动器"+ b.setNum(i+1) + "internal error"+ "  ";}
+               if(array[8]&0x04)  {shortCircuit[i]=1;       a += "驱动器"+ b.setNum(i+1) + "short circuit" + "  ";}
+               if(array[8]&0x08)  {currentOverShoot[i]=1;   a += "驱动器"+ b.setNum(i+1) + "current over shoot" + "  ";}
+               if(array[8]&0x10)  {underVoltage[i]=1;       a += "驱动器"+ b.setNum(i+1) + "under voltage" + "  ";}
+               if(array[8]&0x20)  {overVoltage[i]=1;        a += "驱动器"+ b.setNum(i+1) + "over voltage" + "  ";}
+               if(array[8]&0x40)  {driveOverTemprature[i]=1;a += "驱动器"+ b.setNum(i+1) + "over temprature" + "  ";}
 
     //           memset(array,0,sizeof(unsigned char)*20);
                for(int i=0;i<50;i++)
@@ -3239,6 +3239,65 @@ void Datashare::warningRecord(void)
     }
 
 }
+
+/*********************************差速PID  *****************************/
+double Datashare::Position_PID3 (double delta)
+{
+     double Pwm=0;
+     static double Last_delta=0;
+     static double Last_delta_turn=0;
+     static double Last_Pwm=0;
+
+     if(delta > 180)
+         delta = delta - 360;
+     if(delta < -180)
+         delta = delta + 360;
+     Pwm=0.01*delta+0.005*(delta-Last_delta_turn);       //Î»ÖÃÊœPID¿ØÖÆÆ÷
+     Last_delta_turn=delta;
+     Last_delta=0;
+
+     Last_Pwm = Pwm;
+     if (Pwm>0.04) Pwm = 0.04;
+     if (Pwm<-0.04) Pwm = -0.04;
+     return Pwm;                                           //ÔöÁ¿Êä³ö
+}
+
+void Datashare::readIO1()
+{
+    int numberOfRead = 0;
+    unsigned char array[20]={0};
+    unsigned char array3[20]={0};
+    unsigned char arrayTemp[20]={0};
+    // //read the speed of wheel
+     write(fd1,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
+     numberOfRead = read(fd1,array,sizeof(array));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+     wheelMoveSpeedReadFront = convertTelegramHex2Speed(array);
+
+    // memset(array,0,14*sizeof(unsigned char));
+     write(fd3,readSpeedData,sizeof(readSpeedData));//fflush(stdout);
+     numberOfRead = read(fd3,array3,sizeof(array3));
+     if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+     wheelMoveSpeedReadRear = convertTelegramHex2Speed(array3);
+
+    write(fd6,readInertialBuff,sizeof(readInertialBuff));
+    delayTimeMsecs(8);
+    numberOfRead = read(fd6,arrayTemp,sizeof(arrayTemp));
+    if(numberOfRead <= 0)  {warningRecord();breakFlag=true;fileClearFlag=false;}
+    //ui->CommunicationEdit->append(QString2Hex(mptr.checkWheelCommunication(mptr.fd6)).toHex());
+    yaw = angle_trans(arrayTemp[4],arrayTemp[3])-yaw_error;
+    while(yaw>=360||yaw<0)
+    {
+        if(yaw>=360)
+            yaw-=360;
+        if(yaw<0)
+            yaw+=360;
+    }
+   // if ((yaw - yawLast > 20)||(yaw - yawLast) < -20)	yaw = yawLast;	//滤波
+
+    AGVSpeed=(wheelMoveSpeedReadFront+wheelMoveSpeedReadRear)/2;
+}
+
 /*****************************************              ************************************************/
 
 

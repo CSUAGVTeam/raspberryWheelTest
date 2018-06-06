@@ -157,12 +157,16 @@ public:
     bool Flag_SpeedDe = false;//减速标志
     bool Flag_SpeedAdd = false;//加速标志
     bool Flag_Stop = false;
+    bool Flag_char = false;
     bool oldRouteExistFlag = true;  //旧路径存在标志位
     bool getRouteFlag = false;      //取得新路径标志
     bool TCPconnectFlag = false;    //tcp连接标志位
     bool fileClearFlag = false;     //清空文件标志位
     bool errorReportFlag = false;   //错误报告标志位
     bool lostQRCodeFlag = false;    //丢码停车标志位
+    bool readyToChargeFlag = false; //平移充电标志位
+    bool waitingForCharging = false;//等待充电
+    bool Flag_charOver = false;  //充电完成
 
     QString batteryArray;                           //显示电池报文用
     QString batteryArray2;
@@ -232,7 +236,7 @@ public:
     double yawTarget = 0;
     double yawInt = 0;
     double yawTarget_Last=0;
-
+    double Speed_charge = 0;
 //	bool yawFlag = false;
     bool QR_Flag = false;
 
@@ -292,7 +296,7 @@ public:
                               {-14,1.5},{-15.5,0},{-19.5,0},{-21,1.5},{-21,7.5},{-19.5,9},{-15.5,9},{-14,7.5},{-12.5,9},{-8.5,9},
                               {-7,7.5},{-1.5,9},{0,7.5},{0,1.5},{-12.5,0},{-5.5,9},{-14,7},{0,9.5},{0,10},{0,9.25},
                               {-21.5,0},{-22,0},{-21.25,0},{-20,0},{-20,-0.06},{0,7.5},{-20,0},{-1,9},{-20,0},{-21,0},
-                              {-21.06,8},{-20,-0.06},{-20,-0.06},{-7,7},{-7,6},{0,7.5},{-20,0},{-1,9},{-20,0},{-21,0}};//二维码坐标位置
+                              {-21.06,8},{-20,-0.06},{-20,-0.06},{-8,-1.5},{-7.94,-1.5},{-8.06,-1.5},{-7.94,0},{0.06,1},{-7.94,0},{-21,0}};//二维码坐标位置
                                   //15
       Position P_Target[100] = { {0,0} };//路径坐标
 /***
@@ -313,6 +317,7 @@ public:
                               {0,30},{0,31},{0,32},{0,33},{0,34},{0,35},{0,36},{0,37},{0,38},{0,39}};//路径坐标
 
      Position P_Stop = {0,5}; //停车点
+     Position P_charge = {-8,0};
      PositionStaEnd start_end[100] = {{0,0}};               //从TCP/IP信息中解出的首末点存放数组
      Position P_protection = {0,0};  //2.5m检测不到二维码停车
      //Position P_Target3[100]={{0,1000}};//弯道坐标
@@ -416,6 +421,10 @@ public:
     int Incremental_PI (int Encoder,int Target);
 
     double Position_PID (double Encoder,double Target);
+
+    double Position_PID3(double delta);
+
+    void readIO1();
 
     double angle_trans(unsigned char low, unsigned char high);
     //TD函数

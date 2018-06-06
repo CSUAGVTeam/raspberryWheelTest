@@ -123,9 +123,6 @@ private slots:
 
     void on_setPIDButton_clicked();
 
-    void on_label_3_linkActivated(const QString &link);
-
-    void on_kdSpinBox_editingFinished();
 
     void on_reconnectButton_clicked();
 
@@ -142,7 +139,6 @@ private slots:
 
     void on_setCameraAngleButton_clicked();
 
-    void on_kpSpinBox_editingFinished();
 
 private:
     Ui::MainWindow *ui;

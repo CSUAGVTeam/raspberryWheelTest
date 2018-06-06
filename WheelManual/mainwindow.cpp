@@ -128,6 +128,7 @@ void MainWindow::initialTheSystem(void)
     ui->batteryVoltageLable->setNum(mptr.batteryVoltage);
 
     mptr.Code_Init();  //给上位机发小车坐标
+    ui->CommunicationEdit->append("code_init ready!");
     while(dontShutDownFlag)
     {
         routeFile.open(QIODevice::ReadWrite);
@@ -288,6 +289,8 @@ void MainWindow::systemOn(void)
     mptr.Flag_Stop = false;
     mptr.Flag_SpeedDe = false;
     mptr.Flag_SpeedAdd = false;
+    mptr.Flag_char = false;
+    mptr.Flag_charOver = false;
 
     for(i=0;i<10;i++)  //采10次角度
     {
@@ -508,9 +511,196 @@ void MainWindow::systemOn(void)
 
         }
         else
+        {
+            mptr.writeWheelSpeed(00,00,mptr.commanData);	//生成速度设置报文
+            write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));			//发送速度设置报文到驱动器
+            read(mptr.fd1,array,sizeof(array));									//读取串口缓冲区，主要目的是为了清除缓冲区为之后读取速度留下空间。
+            mptr.writeWheelSpeed(00,00,mptr.commanData);
+            write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+            read(mptr.fd3,array,sizeof(array));
             break;
+        }
         //QApplication::processEvents(QEventLoop::AllEvents,1000);
     }
+
+    if(mptr.P_Target[mptr.targetNumber-1].X == mptr.P_charge.X)
+    {
+        if(mptr.P_Target[mptr.targetNumber-1].Y == mptr.P_charge.Y)
+        {
+            mptr.Flag_char = true;
+            mptr.sickA = 0;
+            mptr.sickB = 0;
+            mptr.sickC = 0;
+            mptr.writeIO();
+        }
+    }
+    if(mptr.Flag_char)
+    {
+        mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset+90);
+        write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
+        mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset+90);
+        write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
+        mptr.delayTimeMsecs(8000);
+        mptr.wheelMoveSpeedSet = 0.05;
+    }
+
+    while(mptr.Flag_char && (mptr.readyToChargeFlag))
+    {
+        int t_3,t_4;
+        int delta_t;
+        t_3 = QTime::currentTime().msec();
+        mptr.readIO1();
+        mptr.Speed_charge = mptr.Position_PID3(mptr.yawTarget - mptr.yaw);
+        ui->CommunicationEdit->append(tr("%1\t%2\t%3").arg(mptr.yawTarget).arg(mptr.yaw).arg(mptr.yawInt));
+        ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVLocation.X).arg(mptr.AGVLocation.Y));
+        ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVSpeed).arg(mptr.AGVLocation.Y));
+
+        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet - mptr.Speed_charge,00,mptr.commanData);								//任务队列完成后，停车
+        write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
+        read(mptr.fd1,array,sizeof(array));
+        mptr.delayTimeMsecs(mptr.delayTimeSet);
+        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet + mptr.Speed_charge,00,mptr.commanData);
+        write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+        read(mptr.fd3,array,sizeof(array));
+
+        if(mptr.buf!=mptr.buf_last)//此处加扫描到二维码的判断信息
+       {
+            if(mptr.buf!=NULL)
+            {
+                mptr.QR_Flag=mptr.Two_bar_codes_Pro2(mptr.buf);
+            }
+       }
+       if(mptr.QR_Flag==true)
+       {
+
+           //加上位置，角度处理函数
+           mptr.yaw_error = mptr.Information_Corrective();
+           mptr.QR_Flag=false;
+           mptr.buf_last=mptr.buf;
+           //mptr.buf.clear();
+           ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf));
+           ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf_last));
+       }
+
+        t_4 = QTime::currentTime().msec();
+        if(t_4>t_3)
+            delta_t=t_4-t_3;
+        else
+            delta_t=1000+t_4-t_3;
+        //ui->CommunicationEdit->append(tr("%1").arg(delta_t));
+        mptr.AGVLocation.Y = mptr.AGVLocation.Y-fabs(mptr.AGVSpeed) * delta_t/1000;
+        if(mptr.AGVLocation.Y <= -1.5)
+        {
+            mptr.Flag_char = false;
+            mptr.Td_SpeedSet = 0;
+            mptr.Speed_Td_x1 = 0;
+            mptr.waitingForCharging = true;
+        }
+        QApplication::processEvents(QEventLoop::AllEvents,100);
+    }
+
+    while(1)
+    {
+        ui->CommunicationEdit->append("De Success!");
+        mptr.wheelSpeedHold = 0;
+        mptr.wheelMoveSpeedSet = 0;
+        if(fabs(mptr.Speed_Td_x1)>0.02)
+        {
+            mptr.Speed_h=0.01;
+            mptr.Speed_Adj();
+            if (mptr.Td_SpeedSet>mptr.wheelMoveSpeedSetMax)
+                mptr.Td_SpeedSet = mptr.wheelMoveSpeedSetMax;
+            if(mptr.Speed_Td_x1 <=0 || mptr.Speed_Td_x1 > 2)
+                mptr.Speed_Td_x1 = 0;
+             mptr.writeWheelSpeed(mptr.Td_SpeedSet,00,mptr.commanData);	//生成速度设置报文
+             write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));			//发送速度设置报文到驱动器
+             read(mptr.fd1,array,sizeof(array));									//读取串口缓冲区，主要目的是为了清除缓冲区为之后读取速度留下空间。
+             mptr.writeWheelSpeed(mptr.Td_SpeedSet,00,mptr.commanData);
+             write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+             read(mptr.fd3,array,sizeof(array));
+
+        }
+        else
+        {
+
+            break;
+        }
+        //QApplication::processEvents(QEventLoop::AllEvents,1000);
+    }
+
+    mptr.writeWheelSpeed(00,00,mptr.commanData);								//任务队列完成后，停车
+    write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
+    read(mptr.fd1,array,sizeof(array));
+    mptr.delayTimeMsecs(mptr.delayTimeSet);
+    mptr.writeWheelSpeed(00,00,mptr.commanData);
+    write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+    read(mptr.fd3,array,sizeof(array));
+
+    while(mptr.waitingForCharging)              //等待充电
+    {
+        ui->CommunicationEdit->append("wait Success!");
+        for(int i = 0; i<10;i++)
+            mptr.delayTimeMsecs(1000);
+        mptr.waitingForCharging = false;
+        mptr.Flag_charOver = true;
+        mptr.wheelMoveSpeedSet = -0.05;
+    }
+
+    while(mptr.Flag_charOver && (mptr.readyToChargeFlag))
+    {
+        int t_3,t_4;
+        int delta_t;
+        t_3 = QTime::currentTime().msec();
+        mptr.readIO1();
+        mptr.Speed_charge = mptr.Position_PID3(mptr.yawTarget - mptr.yaw);
+        ui->CommunicationEdit->append(tr("%1\t%2\t%3").arg(mptr.yawTarget).arg(mptr.yaw).arg(mptr.yawInt));
+        ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVLocation.X).arg(mptr.AGVLocation.Y));
+        ui->CommunicationEdit->append(tr("%1\t%2").arg(mptr.AGVSpeed).arg(mptr.AGVLocation.Y));
+
+        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet - mptr.Speed_charge,00,mptr.commanData);								//任务队列完成后，停车
+        write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
+        read(mptr.fd1,array,sizeof(array));
+        mptr.delayTimeMsecs(mptr.delayTimeSet);
+        mptr.writeWheelSpeed(mptr.wheelMoveSpeedSet + mptr.Speed_charge,00,mptr.commanData);
+        write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
+        read(mptr.fd3,array,sizeof(array));
+
+        if(mptr.buf!=mptr.buf_last)//此处加扫描到二维码的判断信息
+       {
+            if(mptr.buf!=NULL)
+            {
+                mptr.QR_Flag=mptr.Two_bar_codes_Pro2(mptr.buf);
+            }
+       }
+       if(mptr.QR_Flag==true)
+       {
+
+           //加上位置，角度处理函数
+           mptr.yaw_error = mptr.Information_Corrective();
+           mptr.QR_Flag=false;
+           mptr.buf_last=mptr.buf;
+           //mptr.buf.clear();
+           ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf));
+           ui->CommunicationEdit->append(tr("%1\t").arg(mptr.buf_last));
+       }
+
+        t_4 = QTime::currentTime().msec();
+        if(t_4>t_3)
+            delta_t=t_4-t_3;
+        else
+            delta_t=1000+t_4-t_3;
+        //ui->CommunicationEdit->append(tr("%1").arg(delta_t));
+        mptr.AGVLocation.Y = mptr.AGVLocation.Y+fabs(mptr.AGVSpeed) * delta_t/1000;
+        if(mptr.AGVLocation.Y >= 0)
+        {
+            mptr.Flag_char = false;
+            mptr.Flag_charOver = false;
+            mptr.Td_SpeedSet = 0;
+            mptr.Speed_Td_x1 = 0;
+        }
+        QApplication::processEvents(QEventLoop::AllEvents,100);
+    }
+
 	mptr.writeWheelSpeed(00,00,mptr.commanData);								//任务队列完成后，停车
 	write(mptr.fd1,mptr.commanData,sizeof(mptr.commanData));
 	read(mptr.fd1,array,sizeof(array));
@@ -518,11 +708,11 @@ void MainWindow::systemOn(void)
 	mptr.writeWheelSpeed(00,00,mptr.commanData);
 	write(mptr.fd3,mptr.commanData,sizeof(mptr.commanData));
 	read(mptr.fd3,array,sizeof(array));
-	mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
-	write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
-	mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
-	write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
-	ui->CommunicationEdit->append("Halt Success!");
+    mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset);
+    write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
+    mptr.writeWheelPosition(00, mptr.wheelRearAngleOffset);
+    write(mptr.fd4,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd4,array,sizeof(array));
+    ui->CommunicationEdit->append("Halt Success!");
 
     mptr.delayTimeMsecs(30);
 //    write(mptr.fd5,mptr.seri_send_buzzer4,sizeof(mptr.seri_send_buzzer4));
@@ -1372,6 +1562,7 @@ void MainWindow::on_autoRunButton_clicked()
     mptr.breakFlag = false;
     mptr.fileClearFlag = true;
     mptr.initialReady = true;
+    mptr.readyToChargeFlag = true;
 //    mptr.lostQRCodeFlag = false;
 //    if (mptr.wheelMoveSpeedSet==500||mptr.wheelMoveSpeedSet==1000||mptr.wheelMoveSpeedSet==1500)
 //        mptr.wheelMoveSpeedSet=500;
@@ -1424,6 +1615,7 @@ void MainWindow::on_stopAutorunButton_clicked()
     mptr.fileClearFlag = false;
     mptr.initialReady = false;
     mptr.lostQRCodeFlag = false;
+    mptr.readyToChargeFlag = false;
 }
 
 /*******************************舵机转向轮校零函数*******************************************************************************/
@@ -1993,15 +2185,6 @@ void MainWindow::on_setPIDButton_clicked()
     mptr.KD_turn = ui->kdSpinBox->value();
 }
 
-void MainWindow::on_label_3_linkActivated(const QString &link)
-{
-
-}
-
-void MainWindow::on_kdSpinBox_editingFinished()
-{
-
-}
 
 void MainWindow::on_reconnectButton_clicked()
 {
