@@ -532,9 +532,11 @@ void MainWindow::systemOn(void)
             mptr.sickB = 0;
             mptr.sickC = 0;
             mptr.writeIO();
+            if(mptr.num == mptr.targetNumber)
+               mptr.readyToChargeFlag = true;
         }
     }
-    if(mptr.Flag_char)
+    if(mptr.Flag_char && (mptr.readyToChargeFlag))
     {
         mptr.writeWheelPosition(00,mptr.wheelFrontAngleOffset+90);
         write(mptr.fd2,mptr.writePositionData,sizeof(mptr.writePositionData));read(mptr.fd2,array,sizeof(array));
@@ -641,9 +643,16 @@ void MainWindow::systemOn(void)
         ui->CommunicationEdit->append("wait Success!");
         for(int i = 0; i<10;i++)
             mptr.delayTimeMsecs(1000);
-        mptr.waitingForCharging = false;
-        mptr.Flag_charOver = true;
-        mptr.wheelMoveSpeedSet = -0.05;
+        mptr.readBattery();
+        ui->batteryCollumLabel->setNum(mptr.batteryCollum);
+        ui->batteryCurrentLble->setNum(mptr.batteryCurrent);
+        ui->batteryVoltageLable->setNum(mptr.batteryVoltage);
+        if(mptr.batteryCollum>=95)
+        {
+            mptr.waitingForCharging = false;
+            mptr.Flag_charOver = true;
+            mptr.wheelMoveSpeedSet = -0.05;
+        }
     }
 
     while(mptr.Flag_charOver && (mptr.readyToChargeFlag))
@@ -1562,7 +1571,7 @@ void MainWindow::on_autoRunButton_clicked()
     mptr.breakFlag = false;
     mptr.fileClearFlag = true;
     mptr.initialReady = true;
-    mptr.readyToChargeFlag = true;
+//    mptr.readyToChargeFlag = true;
 //    mptr.lostQRCodeFlag = false;
 //    if (mptr.wheelMoveSpeedSet==500||mptr.wheelMoveSpeedSet==1000||mptr.wheelMoveSpeedSet==1500)
 //        mptr.wheelMoveSpeedSet=500;

@@ -797,38 +797,38 @@ void Datashare::checkIO()
     {
         if (sickWarningSpaceAlert && (!sickFalse) )
         {
-          //  if(wheelMoveSpeedSet > 0.3)
-             //   wheelMoveSpeedSet = 0.3;
+            if(wheelMoveSpeedSet > 0.3)
+                wheelMoveSpeedSet = 0.3;
             systemOnLight = 0;
             warmingLight = 1;
             alarmLight = 0;
             sickFlag = true;
-           // write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
         }      //  unit: r/min ,fix in the future.
 
         if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
         {
-           // if(AGVSpeed <= 0.05)
-              //  wheelMoveSpeedSet = 0.08;
-           // else
+            if(AGVSpeed <= 0.05)
+                wheelMoveSpeedSet = 0.08;
+            else
             {
-               // wheelMoveSpeedSet = wheelSpeedHold;
+                wheelMoveSpeedSet = wheelSpeedHold;
                 sickFlag = false;
             }
             systemOnLight = 1;
             warmingLight = 0;
             alarmLight = 0;
-           // write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
         }// The space is available, and add the speed upper limit.
 
         if (sickWarningSpaceAlert & sickFalse)
         {
-           // wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
             sickFlag = true;
             systemOnLight = 0;
             warmingLight = 0;
             alarmLight = 1;
-            //write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
         }
         if ( AGVSpeed >= 0.32 )                          {sickA=0; sickB=0; sickC=1;}
         if ( AGVSpeed < 0.32 )                          {sickA=0; sickB=1; sickC=0;}
@@ -837,39 +837,39 @@ void Datashare::checkIO()
     {
         if (sickWarningSpaceAlert && (!sickFalse) )
         {
-          //  if(wheelMoveSpeedSet < -0.3)
-            //    wheelMoveSpeedSet = -0.3;
+            if(wheelMoveSpeedSet < -0.3)
+                wheelMoveSpeedSet = -0.3;
             systemOnLight = 0;
             warmingLight = 1;
             alarmLight = 0;
             sickFlag = true;
-            //write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
+            write(fd5,seri_send_buzzer3,sizeof(seri_send_buzzer3));
         }      //  unit: r/min ,fix in the future.
 
         if ((!sickWarningSpaceAlert) && (!sickFalse) && (sickFlag == true))
         {
-           // if(AGVSpeed >= -0.05)
-              //  wheelMoveSpeedSet = -0.08;
-           // else
+            if(AGVSpeed >= -0.05)
+                wheelMoveSpeedSet = -0.08;
+            else
             {
-              //  wheelMoveSpeedSet = wheelSpeedHold;
+                wheelMoveSpeedSet = wheelSpeedHold;
                 sickFlag = false;
             }
             systemOnLight = 1;
             warmingLight = 0;
             alarmLight = 0;
 
-           // write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
+            write(fd5,seri_send_buzzer1,sizeof(seri_send_buzzer1));
         }// The space is available, and add the speed upper limit.
 
         if (sickWarningSpaceAlert & sickFalse)
         {
-          //  wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
+            wheelMoveSpeedSet = 0;    // warning field2 alert, stop AGV
             sickFlag = true;
             systemOnLight = 0;
             warmingLight = 0;
             alarmLight = 1;
-           // write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
+            write(fd5,seri_send_buzzer2,sizeof(seri_send_buzzer2));
         }
         if ( AGVSpeed >= -0.32 )                          {sickA=0; sickB=1; sickC=1;}
         if ( AGVSpeed < -0.32 )                          {sickA=1; sickB=1; sickC=0;}
@@ -2451,6 +2451,7 @@ double Datashare::Go2 (Position P_Targets )
           Flag_SpeedAdd = false;
           Flag_SpeedDe = false;
           Flag_Stop = false;
+          readyToChargeFlag = true;
       }
   }
 
